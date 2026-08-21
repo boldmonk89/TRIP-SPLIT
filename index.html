@@ -136,15 +136,20 @@ const CATS = {
   shopping: {label:"Shopping", color:"#8a4a6a", split:"individual", icon:'<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/>'},
 };
 
-const CARS = {
-  sonet:{label:"Kia Sonet", sub:"Self-drive · Revv", amount:8334,  desc:"Kia Sonet — self-drive (booking fee)"},
-  creta:{label:"Creta",     sub:"With driver",       amount:12800, desc:"Creta — rent ₹3,200 × 4 days (with driver)"},
-};
+const DEFAULT_TOLL = 1150;  // Expressway toll + parking — editable
+const DEFAULT_FUEL  = 6000; // ~780 km petrol — editable
+const DEPOSIT = 2000;       // Refundable security deposit — comes back ÷5 to everyone
 
-const seedFor = (k)=>[
-  {id:1, cat:"car",  desc:CARS[k].desc,               amount:CARS[k].amount, payer:"Archit", split:"shared", beneficiaries:FRIENDS.slice()},
-  {id:2, cat:"toll", desc:"Expressway toll + parking", amount:1150,           payer:"Satwik", split:"shared", beneficiaries:FRIENDS.slice()},
-];
+const CARS = {
+  sonet:{label:"Kia Sonet", sub:"Self-drive · Revv", amount:8334},
+  creta:{label:"Creta",     sub:"With driver",       amount:12800},
+};
+// essentials total (car + toll + fuel + deposit-if-not-refunded), and per-head
+function essentialsTotal(){
+  const e=state.essentials;
+  return CARS[e.car].amount + (Number(e.toll)||0) + (Number(e.fuel)||0) + (e.depositRefunded?0:DEPOSIT);
+}
+function essentialsPerHead(){ return essentialsTotal()/FRIENDS.length; }
 
 const rupee = n => "₹" + Math.round(n).toLocaleString("en-IN");
 const icon = (path, sz=16, color="currentColor") => `<svg class="icon" style="width:${sz}px;height:${sz}px;color:${color}" viewBox="0 0 24 24">${path}</svg>`;
@@ -161,8 +166,8 @@ const ICN = {
 // ---- state ----
 let state = {
   capitals: Object.fromEntries(FRIENDS.map(f=>[f,DEFAULT_CAPITAL])),
-  expenses: seedFor("sonet"),
-  car: "sonet",
+  expenses: [], // manual items only: food, activity, stay, shopping, etc.
+  essentials: { car:"sonet", toll:DEFAULT_TOLL, fuel:DEFAULT_FUEL, depositRefunded:false },
   tab: "add",
   // form
   cat: "food", payer: FRIENDS[0], beneficiaries: FRIENDS.slice(),
@@ -174,14 +179,20 @@ function save(){
   try{
     localStorage.setItem("tripsplit:capitals", JSON.stringify(state.capitals));
     localStorage.setItem("tripsplit:expenses", JSON.stringify(state.expenses));
-    localStorage.setItem("tripsplit:car", JSON.stringify(state.car));
+    localStorage.setItem("tripsplit:essentials", JSON.stringify(state.essentials));
   }catch(e){}
 }
 function load(){
   try{
     const c=localStorage.getItem("tripsplit:capitals"); if(c) state.capitals=JSON.parse(c);
-    const e=localStorage.getItem("tripsplit:expenses"); if(e) state.expenses=JSON.parse(e);
-    const k=localStorage.getItem("tripsplit:car"); if(k) state.car=JSON.parse(k);
+    const es=localStorage.getItem("tripsplit:essentials");
+    if(es){ state.essentials={...state.essentials, ...JSON.parse(es)}; }
+    const e=localStorage.getItem("tripsplit:expenses");
+    if(e){
+      let parsed=JSON.parse(e);
+      // migrate old saves: drop any old fixed car/toll/fuel lines, keep manual items only
+      state.expenses = parsed.filter(x=>!x.fixed);
+    }
   }catch(e){}
 }
 
@@ -191,9 +202,21 @@ function calc(){
   const owed=Object.fromEntries(FRIENDS.map(f=>[f,0]));
   let sharedTotal=0, individualTotal=0, grand=0;
   const catTotals=Object.fromEntries(Object.keys(CATS).map(k=>[k,0]));
+
+  // essentials: car + toll + fuel + deposit(if not refunded) — always split 5 ways, from the pool (no single payer)
+  const ess=state.essentials;
+  const carAmt=CARS[ess.car].amount, tollAmt=Number(ess.toll)||0, fuelAmt=Number(ess.fuel)||0;
+  const depositAmt = ess.depositRefunded ? 0 : DEPOSIT;
+  catTotals.car=carAmt; catTotals.toll=tollAmt; catTotals.fuel=fuelAmt;
+  const essTotal=carAmt+tollAmt+fuelAmt+depositAmt;
+  grand+=essTotal; sharedTotal+=carAmt+tollAmt+fuelAmt; // deposit tracked separately below
+  const essShare=essTotal/FRIENDS.length;
+  for(const f of FRIENDS) owed[f]+=essShare;
+
+  // manual expenses
   for(const e of state.expenses){
     paid[e.payer]=(paid[e.payer]||0)+e.amount;
-    catTotals[e.cat]+=e.amount; grand+=e.amount;
+    catTotals[e.cat]=(catTotals[e.cat]||0)+e.amount; grand+=e.amount;
     const bens=(e.beneficiaries&&e.beneficiaries.length)?e.beneficiaries:(e.split==="individual"?[e.payer]:FRIENDS);
     const share=e.amount/bens.length;
     for(const b of bens) owed[b]=(owed[b]||0)+share;
@@ -201,7 +224,7 @@ function calc(){
   }
   const capTotal=FRIENDS.reduce((s,f)=>s+(Number(state.capitals[f])||0),0);
   const net=Object.fromEntries(FRIENDS.map(f=>[f,(Number(state.capitals[f])||0)-owed[f]]));
-  return {paid,owed,sharedTotal,individualTotal,grand,catTotals,capTotal,net};
+  return {paid,owed,sharedTotal,individualTotal,grand,catTotals,capTotal,net,essTotal,depositAmt,carAmt,tollAmt,fuelAmt};
 }
 
 function avatar(name,sz){
@@ -211,11 +234,21 @@ function avatar(name,sz){
 
 // ---- actions ----
 function switchCar(k){
-  state.car=k;
-  const has=state.expenses.some(e=>e.cat==="car");
-  if(!has) state.expenses.unshift({id:1,cat:"car",desc:CARS[k].desc,amount:CARS[k].amount,payer:FRIENDS[0],split:"shared",beneficiaries:FRIENDS.slice()});
-  else state.expenses=state.expenses.map(e=>e.cat==="car"?{...e,desc:CARS[k].desc,amount:CARS[k].amount}:e);
+  state.essentials.car=k;
   save(); render();
+}
+function setToll(v){ state.essentials.toll = v===""?"":Number(v); save(); updateHeader(); updateEssNote(); }
+function setFuel(v){ state.essentials.fuel = v===""?"":Number(v); save(); updateHeader(); updateEssNote(); }
+function fixToll(){ if(state.essentials.toll===""||isNaN(state.essentials.toll)) state.essentials.toll=0; save(); render(); }
+function fixFuel(){ if(state.essentials.fuel===""||isNaN(state.essentials.fuel)) state.essentials.fuel=0; save(); render(); }
+function toggleDeposit(){ state.essentials.depositRefunded=!state.essentials.depositRefunded; save(); render(); }
+function updateEssNote(){
+  const el=document.getElementById("essNote");
+  if(el) el.innerHTML = essNoteHTML();
+}
+function essNoteHTML(){
+  const ess=state.essentials;
+  return `<b style="color:var(--ink)">${rupee(essentialsTotal())} total</b> = Car ${rupee(CARS[ess.car].amount)} + Toll ${rupee(Number(ess.toll)||0)} + Fuel ${rupee(Number(ess.fuel)||0)}${ess.depositRefunded?'':' + Deposit '+rupee(DEPOSIT)} → <b style="color:var(--ink)">${rupee(essentialsPerHead())}/head</b>.`;
 }
 function setCat(k){
   state.cat=k;
@@ -239,7 +272,8 @@ function addExpense(){
 function delExpense(id){ state.expenses=state.expenses.filter(e=>e.id!==id); save(); render(); }
 function resetAll(){
   if(!confirm("Reset all expenses and capital? This can't be undone.")) return;
-  state.expenses=seedFor(state.car);
+  state.expenses=[];
+  state.essentials={ car:state.essentials.car, toll:DEFAULT_TOLL, fuel:DEFAULT_FUEL, depositRefunded:false };
   state.capitals=Object.fromEntries(FRIENDS.map(f=>[f,DEFAULT_CAPITAL]));
   save(); render();
 }
@@ -253,9 +287,10 @@ function everyoneToggle(){
 function whatsappText(){
   const t=calc();
   let s="🏔️ *Mussoorie–Dhanaulti Trip · Split*\n";
-  s+="8–11 Sept · 5 friends · 🚗 "+CARS[state.car].label+"\n━━━━━━━━━━━━━━\n\n";
+  s+="8–11 Sept · 5 friends · 🚗 "+CARS[state.essentials.car].label+"\n━━━━━━━━━━━━━━\n\n";
   s+="💰 *Total spent: "+rupee(t.grand)+"*\n";
-  s+="   Shared "+rupee(t.sharedTotal)+" · Personal "+rupee(t.individualTotal)+"\n\n";
+  s+="   Shared "+rupee(t.sharedTotal)+" · Personal "+rupee(t.individualTotal)+"\n";
+  s+= state.essentials.depositRefunded ? "   Deposit: refunded ✅\n\n" : `   Includes ${rupee(DEPOSIT)} refundable deposit — back within 48 hrs after the trip (~13 Sept), ${rupee(DEPOSIT/FRIENDS.length)}/head\n\n`;
   s+="👥 *Each person:*\n";
   for(const f of FRIENDS){
     const bal=t.net[f];
@@ -288,25 +323,56 @@ function render(){
   if(state.tab==="add"){
     v.innerHTML = `
     <div class="rise">
-      <!-- CAR -->
+      <!-- TRIP ESSENTIALS -->
       <div class="sec">
-        <div class="sechead"><div class="sectitle">${icon(ICN.car,17,'var(--moss)')} Which car?</div></div>
-        <div class="row">
+        <div class="sechead"><div class="sectitle">${icon(ICN.car,17,'var(--moss)')} Trip essentials</div></div>
+
+        <label class="lbl">Car <span style="text-transform:none;font-weight:500;color:#a89a8a">(locked)</span></label>
+        <div class="row" style="margin-bottom:14px">
           ${Object.entries(CARS).map(([k,c])=>{
-            const on=state.car===k;
+            const on=state.essentials.car===k;
             return `<button onclick="switchCar('${k}')" style="flex:1;text-align:left;border:2px solid ${on?'var(--moss)':'rgba(28,23,18,.13)'};background:${on?'#eef2e6':'var(--card)'};border-radius:14px;padding:13px;${on?'box-shadow:0 3px 10px rgba(107,127,74,.18)':''}">
               <div style="display:flex;justify-content:space-between;align-items:center">
                 <span style="font-family:'Fraunces',serif;font-weight:600;font-size:16px">${c.label}</span>
-                ${on?`<span style="width:20px;height:20px;border-radius:50%;background:var(--moss);display:flex;align-items:center;justify-content:center">${icon(ICN.check,13,'#fff')}</span>`:''}
+                ${on?`<span style="width:20px;height:20px;border-radius:50%;background:var(--moss);display:flex;align-items:center;justify-content:center">${icon(ICN.check,13,'#fff')}</span>`:`<span style="color:#c8bca8">${icon('<rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V6a4 4 0 0 1 8 0v4"/>',14)}</span>`}
               </div>
               <div style="font-size:11.5px;color:var(--sub);margin-top:2px">${c.sub}</div>
               <div style="font-family:'Fraunces',serif;font-weight:700;font-size:19px;margin-top:7px;color:${on?'#3f5a2a':'var(--sub)'}">${rupee(c.amount)}</div>
             </button>`;
           }).join("")}
         </div>
-        <div style="margin-top:11px;font-size:12.5px;color:var(--sub);background:#f6f1e6;padding:10px 12px;border-radius:10px;line-height:1.5">
-          Switching updates the car cost automatically. Difference: <b style="color:var(--ink)">${rupee(CARS.creta.amount-CARS.sonet.amount)}</b> (${rupee((CARS.creta.amount-CARS.sonet.amount)/FRIENDS.length)}/head) — Creta costs more but comes with a driver.
+
+        <div class="row">
+          <div style="flex:1">
+            <label class="lbl">${icon(CATS.toll.icon,12,CATS.toll.color)} Toll <span style="text-transform:none;font-weight:500;color:#a89a8a">(editable)</span></label>
+            <div style="display:flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:11px;padding:0 11px;background:var(--card)">
+              <span style="color:var(--sub);font-weight:600">₹</span>
+              <input type="number" class="num" value="${state.essentials.toll}" oninput="setToll(this.value)" onblur="fixToll()" style="width:100%;padding:11px 2px;border:none;background:transparent">
+            </div>
+          </div>
+          <div style="flex:1">
+            <label class="lbl">${icon(CATS.fuel.icon,12,CATS.fuel.color)} Fuel <span style="text-transform:none;font-weight:500;color:#a89a8a">(editable)</span></label>
+            <div style="display:flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:11px;padding:0 11px;background:var(--card)">
+              <span style="color:var(--sub);font-weight:600">₹</span>
+              <input type="number" class="num" value="${state.essentials.fuel}" oninput="setFuel(this.value)" onblur="fixFuel()" style="width:100%;padding:11px 2px;border:none;background:transparent">
+            </div>
+          </div>
         </div>
+
+        <div style="margin-top:13px;display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--line);border-radius:12px;padding:11px 13px;background:${state.essentials.depositRefunded?'#eef2e6':'var(--card)'}">
+          <div>
+            <div style="font-size:14px;font-weight:600;display:flex;align-items:center;gap:6px">
+              ${rupee(DEPOSIT)} security deposit
+              <span style="font-size:10.5px;font-weight:700;color:var(--moss);background:#dbe6d6;padding:2px 8px;border-radius:100px;text-transform:uppercase;letter-spacing:.03em">refundable</span>
+            </div>
+            <div style="font-size:12px;color:var(--sub);margin-top:2px">${state.essentials.depositRefunded?`Refunded ✅ — ${rupee(DEPOSIT/FRIENDS.length)}/head already back`:`Not back yet — refunded within <b>48 hrs after the trip ends</b> (trip ends 11 Sept, so by ~13 Sept). Then ${rupee(DEPOSIT/FRIENDS.length)}/head comes back, split equally.`}</div>
+          </div>
+          <button onclick="toggleDeposit()" style="flex-shrink:0;border:none;border-radius:100px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;background:${state.essentials.depositRefunded?'var(--moss)':'#e7ddca'};color:${state.essentials.depositRefunded?'#fff':'var(--ink)'}">
+            ${state.essentials.depositRefunded?icon(ICN.check,12,'#fff')+' Refunded':'Mark refunded (after trip)'}
+          </button>
+        </div>
+
+        <div id="essNote" style="margin-top:12px;font-size:12.5px;color:var(--sub);background:#f6f1e6;padding:10px 12px;border-radius:10px;line-height:1.55">${essNoteHTML()}</div>
       </div>
 
       <!-- CAPITAL -->
@@ -378,11 +444,11 @@ function render(){
 
       <!-- LIST -->
       <div style="margin-top:16px;margin-bottom:9px;display:flex;justify-content:space-between;align-items:center;padding:0 2px">
-        <span style="font-family:'Fraunces',serif;font-weight:600;font-size:18px">Expenses <span style="color:var(--sub);font-weight:400">· ${state.expenses.length}</span></span>
-        ${state.expenses.length>0?`<button onclick="resetAll()" style="border:none;background:transparent;color:#b34a3a;font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:4px">${icon(ICN.refresh,13)} Reset</button>`:''}
+        <span style="font-family:'Fraunces',serif;font-weight:600;font-size:18px">Other expenses <span style="color:var(--sub);font-weight:400">· ${state.expenses.length}</span></span>
+        ${state.expenses.length>0?`<button onclick="resetAll()" style="border:none;background:transparent;color:#b34a3a;font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:4px">${icon(ICN.refresh,13)} Reset all</button>`:''}
       </div>
       <div style="display:flex;flex-direction:column;gap:8px">
-        ${state.expenses.length===0?`<div style="text-align:center;color:#a89a8a;padding:28px 0;font-size:14px">No expenses yet. Add one above.</div>`:''}
+        ${state.expenses.length===0?`<div style="text-align:center;color:#a89a8a;padding:28px 0;font-size:14px">No food, activity, stay or shopping added yet.</div>`:''}
         ${[...state.expenses].reverse().map(e=>{
           const c=CATS[e.cat];
           const bens=e.beneficiaries&&e.beneficiaries.length?e.beneficiaries:(e.split==="individual"?[e.payer]:FRIENDS);
@@ -391,7 +457,8 @@ function render(){
             <div class="expicon" style="background:${c.color}18">${icon(c.icon,18,c.color)}</div>
             <div style="flex:1;min-width:0"><div class="expname">${e.desc}</div><div class="expmeta">${e.payer} paid · ${meta}</div></div>
             <div style="text-align:right;flex-shrink:0"><div class="expamt">${rupee(e.amount)}</div>
-              <button class="rm" onclick="delExpense(${e.id})">${icon(ICN.trash,12)} remove</button></div>
+              <button class="rm" onclick="delExpense(${e.id})">${icon(ICN.trash,12)} remove</button>
+            </div>
           </div>`;
         }).join("")}
       </div>
@@ -473,10 +540,15 @@ function render(){
         <div class="sumrow"><span style="color:rgba(244,239,229,.7)">Shared total</span><span class="v">${rupee(t.sharedTotal)}</span></div>
         <div class="sumrow"><span style="color:rgba(244,239,229,.7)">Per head (shared)</span><span class="v" style="color:var(--gold)">${rupee(perHead)}</span></div>
         <div class="sumrow"><span style="color:rgba(244,239,229,.7)">Personal (shopping)</span><span class="v">${rupee(t.individualTotal)}</span></div>
+        <div class="sumrow">
+          <span style="color:rgba(244,239,229,.7)">Security deposit</span>
+          <span class="v" style="color:${state.essentials.depositRefunded?'#7fd99a':'#f4efe5'}">${state.essentials.depositRefunded?'Refunded ✅':`${rupee(DEPOSIT)} (in total)`}</span>
+        </div>
         <div style="display:flex;justify-content:space-between;align-items:baseline;padding:12px 0 2px">
           <span style="font-weight:700">Grand total</span>
           <span style="font-family:'Fraunces',serif;font-weight:900;font-size:22px;color:var(--gold)">${rupee(t.grand)}</span>
         </div>
+        ${!state.essentials.depositRefunded?`<div style="font-size:11.5px;color:rgba(244,239,229,.55);margin-top:2px">Includes ${rupee(DEPOSIT)} deposit — refunded within 48 hrs after the trip (by ~13 Sept), then ${rupee(DEPOSIT/FRIENDS.length)}/head comes back.</div>`:''}
       </div>
     </div>`;
   }
