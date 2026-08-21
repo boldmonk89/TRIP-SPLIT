@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#2f4a3a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Trip Split">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='40' fill='%232f4a3a'/%3E%3Cpath d='M60 40 90 100 128 62 155 140 H45 z' fill='%23c79a4a'/%3E%3C/svg%3E">
+<title>Trip Split · Mussoorie</title>
+<meta name="theme-color" content="#2f4a3a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Trip Split">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='40' fill='%232f4a3a'/%3E%3Cpath d='M60 40l30 60 37-37 37 111H23z' fill='%23c79a4a' transform='scale(0.55) translate(75 60)'/%3E%3Cpath d='M90 55l22 44 27-27 27 81H32z' fill='%23c79a4a'/%3E%3C/svg%3E">
+<link rel="manifest" href='data:application/json,{"name":"Trip Split","short_name":"Trip Split","display":"standalone","background_color":"%23f4efe5","theme_color":"%232f4a3a","start_url":".","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 180 180%27%3E%3Crect width=%27180%27 height=%27180%27 rx=%2740%27 fill=%27%232f4a3a%27/%3E%3Cpath d=%27M90 55l22 44 27-27 27 81H32z%27 fill=%27%23c79a4a%27/%3E%3C/svg%3E","sizes":"180x180","type":"image/svg+xml"}]}'>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,900&family=Archivo:wght@400;500;600;700&display=swap');
+  :root{
+    --paper:#f4efe5; --card:#fffdf8; --ink:#1c1712; --sub:#7c6f60; --line:rgba(28,23,18,.10);
+    --pine:#2f4a3a; --pineDk:#1e3327; --clay:#c25b3a; --gold:#c79a4a; --moss:#6b7f4a;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{font-family:'Archivo',system-ui,sans-serif;background:var(--paper);color:var(--ink);padding-bottom:36px;line-height:1.5}
+  input,select,button{font-family:inherit;font-size:14px}
+  button{cursor:pointer;transition:transform .08s ease,background .15s,border-color .15s,box-shadow .15s}
+  button:active{transform:scale(.98)}
+  input:focus,select:focus{outline:none;border-color:var(--pine)!important;box-shadow:0 0 0 3px rgba(47,74,58,.12)}
+  input[type=number]{-moz-appearance:textfield}
+  input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+  .wrap{max-width:540px;margin:0 auto;padding:0 14px}
+  @keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .rise{animation:rise .22s ease both}
+
+  .header{background:linear-gradient(155deg,var(--pine),var(--pineDk));color:#f4efe5;padding:20px 18px 24px;border-radius:0 0 26px 26px;box-shadow:0 8px 24px rgba(30,51,39,.18)}
+  .htitle{display:flex;align-items:center;gap:8px;font-family:'Fraunces',serif;font-weight:900;font-size:24px;letter-spacing:-.01em}
+  .hsub{font-size:12.5px;color:rgba(244,239,229,.65);margin-top:2px;margin-left:28px}
+  .hstats{display:flex;gap:10px;margin-top:18px}
+  .hstat{flex:1;background:rgba(255,255,255,.08);border-radius:13px;padding:11px 13px}
+  .hstat .l{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:rgba(244,239,229,.55)}
+  .hstat .v{font-family:'Fraunces',serif;font-size:20px;font-weight:600;margin-top:3px}
+
+  .tabs{display:flex;gap:5px;margin-top:16px;background:#e7ddca;padding:5px;border-radius:14px;position:sticky;top:6px;z-index:5;box-shadow:0 2px 10px rgba(28,23,18,.06)}
+  .tab{flex:1;border:none;border-radius:10px;padding:11px 6px;font-size:13.5px;font-weight:600;background:transparent;color:var(--sub)}
+  .tab.on{background:var(--pine);color:#fff;box-shadow:0 2px 8px rgba(47,74,58,.25)}
+
+  .sec{margin-top:14px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:0 1px 6px rgba(28,23,18,.04)}
+  .sechead{display:flex;justify-content:space-between;align-items:center;margin-bottom:13px}
+  .sectitle{display:flex;align-items:center;gap:8px;font-family:'Fraunces',serif;font-weight:600;font-size:17px}
+  .subline{font-size:12.5px;color:var(--sub)}
+
+  .lbl{display:block;font-size:11.5px;font-weight:600;letter-spacing:.03em;text-transform:uppercase;color:var(--sub);margin-bottom:6px}
+  .inp{width:100%;padding:12px;border-radius:11px;border:1px solid var(--line);font-size:14.5px;background:var(--card)}
+  .row{display:flex;gap:9px}
+
+  .chip{border:1.5px solid rgba(28,23,18,.13);background:var(--card);color:var(--sub);border-radius:100px;padding:7px 13px;font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:5px}
+  .chip.on{color:#fff}
+  .benchip{border:1.5px solid rgba(28,23,18,.13);background:var(--card);color:#a89a8a;border-radius:100px;padding:7px 13px;font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:4px}
+  .benchip.on{border-color:var(--pine);background:#dbe6d6;color:#1e3327}
+
+  .btn-primary{width:100%;margin-top:15px;border:none;background:var(--clay);color:#fff;border-radius:12px;padding:14px;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:7px;box-shadow:0 4px 14px rgba(194,91,58,.28)}
+  .btn-wa{width:100%;margin-top:16px;border:none;background:#22a45a;color:#fff;border-radius:13px;padding:15px;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 14px rgba(34,164,90,.28)}
+  .btn-ghost{border:none;background:#e7ddca;color:var(--ink);border-radius:9px;padding:7px 13px;font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:5px}
+  .btn-ghost.on{background:var(--pine);color:#fff}
+
+  .avatar{border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
+
+  .exp{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:12px;box-shadow:0 1px 4px rgba(28,23,18,.04)}
+  .expicon{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .expname{font-size:14.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .expmeta{font-size:12px;color:var(--sub);margin-top:1px}
+  .expamt{font-family:'Fraunces',serif;font-weight:600;font-size:16px}
+  .rm{border:none;background:transparent;color:#c08575;padding:2px 0;display:flex;align-items:center;gap:3px;font-size:11.5px;margin-left:auto}
+
+  .pcard{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 1px 5px rgba(28,23,18,.04);overflow:hidden}
+  .phead{width:100%;border:none;background:transparent;padding:16px;text-align:left;display:flex;justify-content:space-between;align-items:center}
+  .pill{font-size:12.5px;font-weight:700;padding:7px 13px;border-radius:100px;display:flex;align-items:center;gap:4px;white-space:nowrap}
+  .pill.pos{background:#dbe6d6;color:#1e3327}
+  .pill.neg{background:#f6dcd2;color:#a8492d}
+
+  .note{font-size:13px;color:#5a5245;background:#f0e7d4;border-left:3px solid var(--clay);padding:12px 14px;border-radius:0 11px 11px 0;line-height:1.5;margin-top:16px}
+  .totbox{margin-top:14px;background:var(--ink);color:#f4efe5;border-radius:18px;padding:18px;box-shadow:0 6px 20px rgba(28,23,18,.2)}
+  .sumrow{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid rgba(244,239,229,.12);font-size:14px}
+  .sumrow .v{font-family:'Fraunces',serif;font-weight:600}
+  .foot{text-align:center;margin-top:22px;font-size:11.5px;color:#a89a8a}
+  .install{margin-top:18px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:0 1px 6px rgba(28,23,18,.04)}
+  .install h4{font-family:'Fraunces',serif;font-weight:600;font-size:16px;display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .install p{font-size:13px;color:var(--sub);line-height:1.55}
+  .install .steps{margin-top:10px;font-size:13px;color:#5a5245;line-height:1.7}
+  .install b{color:var(--ink)}
+  .btn-install{width:100%;margin-top:12px;border:none;background:var(--pine);color:#fff;border-radius:12px;padding:13px;font-size:14.5px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:7px;box-shadow:0 4px 14px rgba(47,74,58,.24)}
+  .install{margin-top:14px;background:linear-gradient(100deg,var(--gold),#b0842e);color:#2a2010;border:none;border-radius:14px;padding:13px 16px;width:100%;display:flex;align-items:center;justify-content:center;gap:9px;font-size:14px;font-weight:700;box-shadow:0 4px 14px rgba(199,154,74,.3)}
+  .ios-tip{margin-top:12px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;font-size:13.5px;color:#5a5245;line-height:1.6}
+  .ios-tip b{color:var(--ink)}
+  .ios-tip .close{float:right;border:none;background:transparent;color:var(--sub);font-size:18px;line-height:1;padding:0 0 6px 8px}
+
+  .icon{width:1em;height:1em;display:inline-block;vertical-align:-.125em;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;fill:none}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="htitle">
+    <svg class="icon" style="width:20px;height:20px;color:var(--gold)" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 15H2L8 3z"/></svg>
+    Trip Split
+  </div>
+  <div class="hsub">Mussoorie · Dhanaulti · 5 friends · 8–11 Sept</div>
+  <div class="hstats" id="hstats"></div>
+</div>
+
+<div class="wrap">
+  <div class="tabs">
+    <button class="tab on" data-tab="add">Add</button>
+    <button class="tab" data-tab="people">Balances</button>
+    <button class="tab" data-tab="cats">Breakdown</button>
+  </div>
+  <div id="view"></div>
+  <div id="install-slot"></div>
+  <div class="foot">✓ Saved on this device · share with the group anytime</div>
+</div>
+
+<script>
+const FRIENDS = ["Archit","Satwik","Kripansh","Tejas","Akshat"];
+const DEFAULT_CAPITAL = 9000;
+const AV_COLORS = ["#c25b3a","#6b7f4a","#a8763a","#3a6b5a","#8a4a6a"];
+
+const CATS = {
+  car:      {label:"Car",      color:"#6b7f4a", split:"shared",     icon:'<path d="M5 17H3v-6l2-5h10l2 5v6h-2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/>'},
+  fuel:     {label:"Fuel",     color:"#c25b3a", split:"shared",     icon:'<path d="M3 22h12V4a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2z"/><path d="M15 8h2a2 2 0 0 1 2 2v6a2 2 0 0 0 2 2 2 2 0 0 0 2-2V7l-3-3"/><path d="M6 6h6"/>'},
+  toll:     {label:"Toll",     color:"#a8763a", split:"shared",     icon:'<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z"/><path d="M8 7h8M8 11h8M8 15h5"/>'},
+  stay:     {label:"Stay",     color:"#2f4a3a", split:"shared",     icon:'<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/>'},
+  food:     {label:"Food",     color:"#8a5a2a", split:"shared",     icon:'<path d="M3 2v7c0 1 1 2 2 2h0c1 0 2-1 2-2V2M5 2v9M11 2v20M11 8c0-3 1-6 4-6v20"/>'},
+  activity: {label:"Activity", color:"#3a6b5a", split:"shared",     icon:'<path d="m8 3 4 8 5-5 5 15H2L8 3z"/>'},
+  shopping: {label:"Shopping", color:"#8a4a6a", split:"individual", icon:'<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/>'},
+};
+
+const CARS = {
+  sonet:{label:"Kia Sonet", sub:"Self-drive · Revv", amount:8334,  desc:"Kia Sonet — self-drive (booking fee)"},
+  creta:{label:"Creta",     sub:"With driver",       amount:12800, desc:"Creta — rent ₹3,200 × 4 days (with driver)"},
+};
+
+const seedFor = (k)=>[
+  {id:1, cat:"car",  desc:CARS[k].desc,               amount:CARS[k].amount, payer:"Archit", split:"shared", beneficiaries:FRIENDS.slice()},
+  {id:2, cat:"toll", desc:"Expressway toll + parking", amount:1150,           payer:"Satwik", split:"shared", beneficiaries:FRIENDS.slice()},
+];
+
+const rupee = n => "₹" + Math.round(n).toLocaleString("en-IN");
+const icon = (path, sz=16, color="currentColor") => `<svg class="icon" style="width:${sz}px;height:${sz}px;color:${color}" viewBox="0 0 24 24">${path}</svg>`;
+const ICN = {
+  plus:'<path d="M12 5v14M5 12h14"/>', trash:'<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>',
+  share:'<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/>',
+  wallet:'<path d="M20 12V8H6a2 2 0 0 1 0-4h12v4M4 6v12a2 2 0 0 0 2 2h14v-4"/><circle cx="16" cy="12" r="1"/>',
+  refresh:'<path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5"/>',
+  check:'<path d="M20 6 9 17l-5-5"/>', pencil:'<path d="M17 3a2.8 2.8 0 0 1 4 4L7 21l-4 1 1-4z"/>',
+  chevron:'<path d="m9 18 6-6-6-6"/>',
+  car:'<path d="M5 17H3v-6l2-5h10l2 5v6h-2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/>',
+};
+
+// ---- state ----
+let state = {
+  capitals: Object.fromEntries(FRIENDS.map(f=>[f,DEFAULT_CAPITAL])),
+  expenses: seedFor("sonet"),
+  car: "sonet",
+  tab: "add",
+  // form
+  cat: "food", payer: FRIENDS[0], beneficiaries: FRIENDS.slice(),
+  editingCap: false, openPerson: null,
+};
+
+// ---- persistence ----
+function save(){
+  try{
+    localStorage.setItem("tripsplit:capitals", JSON.stringify(state.capitals));
+    localStorage.setItem("tripsplit:expenses", JSON.stringify(state.expenses));
+    localStorage.setItem("tripsplit:car", JSON.stringify(state.car));
+  }catch(e){}
+}
+function load(){
+  try{
+    const c=localStorage.getItem("tripsplit:capitals"); if(c) state.capitals=JSON.parse(c);
+    const e=localStorage.getItem("tripsplit:expenses"); if(e) state.expenses=JSON.parse(e);
+    const k=localStorage.getItem("tripsplit:car"); if(k) state.car=JSON.parse(k);
+  }catch(e){}
+}
+
+// ---- calculations ----
+function calc(){
+  const paid=Object.fromEntries(FRIENDS.map(f=>[f,0]));
+  const owed=Object.fromEntries(FRIENDS.map(f=>[f,0]));
+  let sharedTotal=0, individualTotal=0, grand=0;
+  const catTotals=Object.fromEntries(Object.keys(CATS).map(k=>[k,0]));
+  for(const e of state.expenses){
+    paid[e.payer]=(paid[e.payer]||0)+e.amount;
+    catTotals[e.cat]+=e.amount; grand+=e.amount;
+    const bens=(e.beneficiaries&&e.beneficiaries.length)?e.beneficiaries:(e.split==="individual"?[e.payer]:FRIENDS);
+    const share=e.amount/bens.length;
+    for(const b of bens) owed[b]=(owed[b]||0)+share;
+    if(e.split==="individual") individualTotal+=e.amount; else sharedTotal+=e.amount;
+  }
+  const capTotal=FRIENDS.reduce((s,f)=>s+(Number(state.capitals[f])||0),0);
+  const net=Object.fromEntries(FRIENDS.map(f=>[f,(Number(state.capitals[f])||0)-owed[f]]));
+  return {paid,owed,sharedTotal,individualTotal,grand,catTotals,capTotal,net};
+}
+
+function avatar(name,sz){
+  const i=FRIENDS.indexOf(name); const bg=AV_COLORS[i>=0?i:0];
+  return `<div class="avatar" style="width:${sz}px;height:${sz}px;background:${bg};font-size:${sz*0.42}px">${name[0]}</div>`;
+}
+
+// ---- actions ----
+function switchCar(k){
+  state.car=k;
+  const has=state.expenses.some(e=>e.cat==="car");
+  if(!has) state.expenses.unshift({id:1,cat:"car",desc:CARS[k].desc,amount:CARS[k].amount,payer:FRIENDS[0],split:"shared",beneficiaries:FRIENDS.slice()});
+  else state.expenses=state.expenses.map(e=>e.cat==="car"?{...e,desc:CARS[k].desc,amount:CARS[k].amount}:e);
+  save(); render();
+}
+function setCat(k){
+  state.cat=k;
+  state.beneficiaries = CATS[k].split==="individual" ? [state.payer] : FRIENDS.slice();
+  render();
+}
+function toggleBen(f){
+  const i=state.beneficiaries.indexOf(f);
+  if(i>=0) state.beneficiaries.splice(i,1); else state.beneficiaries.push(f);
+  render();
+}
+function addExpense(){
+  const desc=document.getElementById("f-desc").value.trim();
+  const amt=parseFloat(document.getElementById("f-amt").value);
+  if(!amt||amt<=0||!desc){ alert("Add a name and amount first."); return; }
+  const split=CATS[state.cat].split;
+  const bens=split==="individual"?[state.payer]:(state.beneficiaries.length?state.beneficiaries.slice():FRIENDS.slice());
+  state.expenses.push({id:Date.now(),cat:state.cat,desc,amount:amt,payer:state.payer,split,beneficiaries:bens});
+  save(); render();
+}
+function delExpense(id){ state.expenses=state.expenses.filter(e=>e.id!==id); save(); render(); }
+function resetAll(){
+  if(!confirm("Reset all expenses and capital? This can't be undone.")) return;
+  state.expenses=seedFor(state.car);
+  state.capitals=Object.fromEntries(FRIENDS.map(f=>[f,DEFAULT_CAPITAL]));
+  save(); render();
+}
+function setCapital(f,v){ state.capitals[f]= v===""?"":Number(v); save(); updateHeader(); }
+function fixCapital(f){ if(state.capitals[f]===""||isNaN(state.capitals[f])) state.capitals[f]=0; save(); render(); }
+function everyoneToggle(){
+  state.beneficiaries = state.beneficiaries.length===FRIENDS.length ? [state.payer] : FRIENDS.slice();
+  render();
+}
+
+function whatsappText(){
+  const t=calc();
+  let s="🏔️ *Mussoorie–Dhanaulti Trip · Split*\n";
+  s+="8–11 Sept · 5 friends · 🚗 "+CARS[state.car].label+"\n━━━━━━━━━━━━━━\n\n";
+  s+="💰 *Total spent: "+rupee(t.grand)+"*\n";
+  s+="   Shared "+rupee(t.sharedTotal)+" · Personal "+rupee(t.individualTotal)+"\n\n";
+  s+="👥 *Each person:*\n";
+  for(const f of FRIENDS){
+    const bal=t.net[f];
+    s+=`\n*${f}*\n  Put in: ${rupee(state.capitals[f]||0)}\n  Trip cost: ${rupee(t.owed[f])}\n`;
+    s+= bal>=0 ? `  Gets back: ${rupee(bal)} ✅\n` : `  Add more: ${rupee(-bal)} ⚠️\n`;
+  }
+  s+="\n━━━━━━━━━━━━━━\n📊 *By category:*\n";
+  for(const k of Object.keys(CATS)) if(t.catTotals[k]>0) s+=`  ${CATS[k].label}: ${rupee(t.catTotals[k])}\n`;
+  s+="\n_Full breakdown in the app_ 🚗";
+  return s;
+}
+function shareWA(){ window.open("https://wa.me/?text="+encodeURIComponent(whatsappText()),"_blank"); }
+
+// ---- render ----
+function updateHeader(){
+  const t=calc();
+  const left=t.capTotal-t.grand;
+  document.getElementById("hstats").innerHTML=`
+    <div class="hstat"><div class="l">Total spent</div><div class="v">${rupee(t.grand)}</div></div>
+    <div class="hstat"><div class="l">Pool put in</div><div class="v">${rupee(t.capTotal)}</div></div>
+    <div class="hstat"><div class="l">Pool left</div><div class="v" style="color:${left<0?'#e8a37a':'#f4efe5'}">${rupee(left)}</div></div>`;
+}
+
+function render(){
+  updateHeader();
+  document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("on", b.dataset.tab===state.tab));
+  const t=calc();
+  const v=document.getElementById("view");
+
+  if(state.tab==="add"){
+    v.innerHTML = `
+    <div class="rise">
+      <!-- CAR -->
+      <div class="sec">
+        <div class="sechead"><div class="sectitle">${icon(ICN.car,17,'var(--moss)')} Which car?</div></div>
+        <div class="row">
+          ${Object.entries(CARS).map(([k,c])=>{
+            const on=state.car===k;
+            return `<button onclick="switchCar('${k}')" style="flex:1;text-align:left;border:2px solid ${on?'var(--moss)':'rgba(28,23,18,.13)'};background:${on?'#eef2e6':'var(--card)'};border-radius:14px;padding:13px;${on?'box-shadow:0 3px 10px rgba(107,127,74,.18)':''}">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-family:'Fraunces',serif;font-weight:600;font-size:16px">${c.label}</span>
+                ${on?`<span style="width:20px;height:20px;border-radius:50%;background:var(--moss);display:flex;align-items:center;justify-content:center">${icon(ICN.check,13,'#fff')}</span>`:''}
+              </div>
+              <div style="font-size:11.5px;color:var(--sub);margin-top:2px">${c.sub}</div>
+              <div style="font-family:'Fraunces',serif;font-weight:700;font-size:19px;margin-top:7px;color:${on?'#3f5a2a':'var(--sub)'}">${rupee(c.amount)}</div>
+            </button>`;
+          }).join("")}
+        </div>
+        <div style="margin-top:11px;font-size:12.5px;color:var(--sub);background:#f6f1e6;padding:10px 12px;border-radius:10px;line-height:1.5">
+          Switching updates the car cost automatically. Difference: <b style="color:var(--ink)">${rupee(CARS.creta.amount-CARS.sonet.amount)}</b> (${rupee((CARS.creta.amount-CARS.sonet.amount)/FRIENDS.length)}/head) — Creta costs more but comes with a driver.
+        </div>
+      </div>
+
+      <!-- CAPITAL -->
+      <div class="sec">
+        <div class="sechead">
+          <div class="sectitle">${icon(ICN.wallet,17,'var(--pine)')} Who put in what</div>
+          <button class="btn-ghost ${state.editingCap?'on':''}" onclick="state.editingCap=!state.editingCap;render()">
+            ${state.editingCap?icon(ICN.check,14)+' Done':icon(ICN.pencil,13)+' Edit'}
+          </button>
+        </div>
+        ${FRIENDS.map((f,i)=>`
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;${i<FRIENDS.length-1?'border-bottom:1px solid var(--line)':''}">
+            <div style="display:flex;align-items:center;gap:10px">${avatar(f,30)}<span style="font-size:14.5px;font-weight:500">${f}</span></div>
+            ${state.editingCap
+              ? `<div style="display:flex;align-items:center;gap:3px;border:1px solid var(--line);border-radius:9px;padding:0 10px;background:var(--card)">
+                   <span style="color:var(--sub)">₹</span>
+                   <input type="number" value="${state.capitals[f]}" oninput="setCapital('${f}',this.value)" onblur="fixCapital('${f}')" style="width:92px;padding:8px 2px;border:none;text-align:right;background:transparent">
+                 </div>`
+              : `<span style="font-family:'Fraunces',serif;font-weight:600;font-size:16.5px">${rupee(state.capitals[f]||0)}</span>`}
+          </div>`).join("")}
+      </div>
+
+      <!-- ADD -->
+      <div class="sec">
+        <div class="sechead"><div class="sectitle">${icon(ICN.plus,17,'var(--clay)')} Add an expense</div></div>
+        <div style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:13px">
+          ${Object.entries(CATS).map(([k,c])=>{
+            const on=state.cat===k;
+            return `<button class="chip ${on?'on':''}" style="${on?`background:${c.color};border-color:${c.color}`:''}" onclick="setCat('${k}')">${icon(c.icon,14)} ${c.label}</button>`;
+          }).join("")}
+        </div>
+        <label class="lbl">What was it for?</label>
+        <input class="inp" id="f-desc" placeholder="e.g. Char Dukan breakfast">
+        <div class="row" style="margin-top:10px">
+          <div style="flex:1">
+            <label class="lbl">Amount</label>
+            <div style="display:flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:11px;padding:0 11px;background:var(--card)">
+              <span style="color:var(--sub);font-weight:600">₹</span>
+              <input type="number" id="f-amt" placeholder="0" style="width:100%;padding:12px 2px;border:none;background:transparent">
+            </div>
+          </div>
+          <div style="flex:1">
+            <label class="lbl">Paid by</label>
+            <select class="inp" onchange="state.payer=this.value; if(CATS[state.cat].split==='individual'){state.beneficiaries=[state.payer]} render()">
+              ${FRIENDS.map(f=>`<option ${state.payer===f?'selected':''}>${f}</option>`).join("")}
+            </select>
+          </div>
+        </div>
+        ${CATS[state.cat].split==="shared" ? `
+          <div style="margin-top:13px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+              <label class="lbl" style="margin-bottom:0">Who's it for?</label>
+              <button onclick="everyoneToggle()" style="border:none;background:transparent;color:var(--pine);font-size:12.5px;font-weight:700">
+                ${state.beneficiaries.length===FRIENDS.length?"Only me":"Everyone"}
+              </button>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+              ${FRIENDS.map(f=>{const on=state.beneficiaries.includes(f);return `<button class="benchip ${on?'on':''}" onclick="toggleBen('${f}')">${on?icon(ICN.check,12):''}${f}</button>`;}).join("")}
+            </div>
+            <div style="margin-top:7px;font-size:11.5px;color:var(--sub)">
+              ${state.beneficiaries.length===FRIENDS.length?"Everyone chips in equally.":`Only split between ${state.beneficiaries.length} — ${state.beneficiaries.join(", ")||"nobody"}.`}
+            </div>
+          </div>`
+        : `<div style="margin-top:13px;font-size:12.5px;color:#8a4a6a;background:#f7ebf1;padding:10px 13px;border-radius:10px;display:flex;align-items:center;gap:7px">
+             ${icon(CATS.shopping.icon,15,'#8a4a6a')} Personal expense — added only to <b style="margin:0 2px">${state.payer}</b>, not split.
+           </div>`}
+        <button class="btn-primary" onclick="addExpense()">${icon(ICN.plus,18)} Add expense</button>
+      </div>
+
+      <!-- LIST -->
+      <div style="margin-top:16px;margin-bottom:9px;display:flex;justify-content:space-between;align-items:center;padding:0 2px">
+        <span style="font-family:'Fraunces',serif;font-weight:600;font-size:18px">Expenses <span style="color:var(--sub);font-weight:400">· ${state.expenses.length}</span></span>
+        ${state.expenses.length>0?`<button onclick="resetAll()" style="border:none;background:transparent;color:#b34a3a;font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:4px">${icon(ICN.refresh,13)} Reset</button>`:''}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${state.expenses.length===0?`<div style="text-align:center;color:#a89a8a;padding:28px 0;font-size:14px">No expenses yet. Add one above.</div>`:''}
+        ${[...state.expenses].reverse().map(e=>{
+          const c=CATS[e.cat];
+          const bens=e.beneficiaries&&e.beneficiaries.length?e.beneficiaries:(e.split==="individual"?[e.payer]:FRIENDS);
+          const meta = e.split==="individual"?"personal":(bens.length===FRIENDS.length?"split all":bens.join(", "));
+          return `<div class="exp rise">
+            <div class="expicon" style="background:${c.color}18">${icon(c.icon,18,c.color)}</div>
+            <div style="flex:1;min-width:0"><div class="expname">${e.desc}</div><div class="expmeta">${e.payer} paid · ${meta}</div></div>
+            <div style="text-align:right;flex-shrink:0"><div class="expamt">${rupee(e.amount)}</div>
+              <button class="rm" onclick="delExpense(${e.id})">${icon(ICN.trash,12)} remove</button></div>
+          </div>`;
+        }).join("")}
+      </div>
+    </div>`;
+  }
+
+  else if(state.tab==="people"){
+    v.innerHTML = `
+    <div class="rise">
+      <div class="note">Tap anyone to see what they paid for. Green = money coming back, red = they still owe.</div>
+      <div style="margin-top:14px;display:flex;flex-direction:column;gap:11px">
+        ${FRIENDS.map(f=>{
+          const bal=t.net[f], pos=bal>=0, open=state.openPerson===f;
+          const mine=state.expenses.filter(e=>e.payer===f);
+          return `<div class="pcard">
+            <button class="phead" onclick="state.openPerson=${open?'null':`'${f}'`};render()">
+              <div style="display:flex;align-items:center;gap:11px">
+                ${avatar(f,34)}
+                <div>
+                  <div style="font-family:'Fraunces',serif;font-weight:600;font-size:19px;line-height:1.1">${f}</div>
+                  <div style="font-size:12px;color:var(--sub);margin-top:2px">Put in ${rupee(state.capitals[f]||0)} · Cost ${rupee(t.owed[f])}</div>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span class="pill ${pos?'pos':'neg'}">${pos?'+'+rupee(bal):'−'+rupee(-bal)}</span>
+                <span style="transform:${open?'rotate(90deg)':'none'};transition:transform .2s;color:var(--sub)">${icon(ICN.chevron,18)}</span>
+              </div>
+            </button>
+            ${open?`<div class="rise" style="border-top:1px solid var(--line);padding:12px 16px 16px;background:#faf6ee">
+              <div style="font-size:11.5px;font-weight:600;letter-spacing:.03em;text-transform:uppercase;color:var(--sub);margin-bottom:9px">${f} paid for</div>
+              ${mine.length===0
+                ? `<div style="font-size:13.5px;color:#a89a8a;padding:6px 0">Didn't pay for anything — but the trip still costs them ${rupee(t.owed[f])}.</div>`
+                : `<div style="display:flex;flex-direction:column;gap:7px">
+                    ${mine.map(e=>{const c=CATS[e.cat];return `<div style="display:flex;align-items:center;gap:10px">
+                      <div style="width:30px;height:30px;border-radius:8px;background:${c.color}18;display:flex;align-items:center;justify-content:center;flex-shrink:0">${icon(c.icon,15,c.color)}</div>
+                      <span style="flex:1;font-size:14px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${e.desc}</span>
+                      <span style="font-family:'Fraunces',serif;font-weight:600;font-size:14.5px">${rupee(e.amount)}</span></div>`;}).join("")}
+                    <div style="display:flex;justify-content:space-between;border-top:1px solid var(--line);margin-top:4px;padding-top:9px">
+                      <span style="font-size:13px;font-weight:600;color:var(--sub)">Total paid by ${f}</span>
+                      <span style="font-family:'Fraunces',serif;font-weight:700;font-size:15px">${rupee(t.paid[f])}</span></div>
+                  </div>`}
+              <div style="margin-top:12px;font-size:12.5px;color:#5a5245;background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px;line-height:1.55">
+                ${pos
+                  ? `Put in <b>${rupee(state.capitals[f]||0)}</b>, trip cost them <b>${rupee(t.owed[f])}</b> → <b style="color:#2f7a4a">gets ${rupee(bal)} back</b>.`
+                  : `Put in <b>${rupee(state.capitals[f]||0)}</b>, trip cost them <b>${rupee(t.owed[f])}</b> → <b style="color:#a8492d">needs to add ${rupee(-bal)} more</b>.`}
+              </div>
+            </div>`:''}
+          </div>`;
+        }).join("")}
+      </div>
+      <button class="btn-wa" onclick="shareWA()">${icon(ICN.share,18)} Share on WhatsApp</button>
+    </div>`;
+  }
+
+  else if(state.tab==="cats"){
+    const perHead=t.sharedTotal/FRIENDS.length;
+    v.innerHTML = `
+    <div class="rise">
+      <div class="sec">
+        <div class="sechead" style="margin-bottom:4px"><div class="sectitle">Spending by category</div></div>
+        <div class="subline" style="margin-bottom:14px">Shared items split 5 ways · shopping is personal</div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          ${Object.entries(CATS).map(([k,c])=>{
+            const val=t.catTotals[k], pct=t.grand>0?val/t.grand*100:0;
+            return `<div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                <span style="display:flex;align-items:center;gap:7px;font-size:14px;font-weight:600">${icon(c.icon,15,c.color)} ${c.label}
+                  <span style="font-size:11px;color:#a89a8a;font-weight:500">${c.split==="individual"?"personal":"shared"}</span></span>
+                <span style="font-family:'Fraunces',serif;font-weight:600;font-size:15px">${rupee(val)}</span>
+              </div>
+              <div style="height:9px;background:#e7ddca;border-radius:100px;overflow:hidden">
+                <div style="height:100%;width:${pct}%;background:${c.color};border-radius:100px;transition:width .4s ease"></div>
+              </div>
+            </div>`;
+          }).join("")}
+        </div>
+      </div>
+      <div class="totbox">
+        <div class="sumrow"><span style="color:rgba(244,239,229,.7)">Shared total</span><span class="v">${rupee(t.sharedTotal)}</span></div>
+        <div class="sumrow"><span style="color:rgba(244,239,229,.7)">Per head (shared)</span><span class="v" style="color:var(--gold)">${rupee(perHead)}</span></div>
+        <div class="sumrow"><span style="color:rgba(244,239,229,.7)">Personal (shopping)</span><span class="v">${rupee(t.individualTotal)}</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;padding:12px 0 2px">
+          <span style="font-weight:700">Grand total</span>
+          <span style="font-family:'Fraunces',serif;font-weight:900;font-size:22px;color:var(--gold)">${rupee(t.grand)}</span>
+        </div>
+      </div>
+    </div>`;
+  }
+}
+
+document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>{state.tab=b.dataset.tab; state.openPerson=null; render(); renderInstall();}));
+
+// ---- Add to Home Screen ----
+let deferredPrompt=null;
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone===true;
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+function renderInstall(){
+  const slot=document.getElementById("install-slot");
+  if(isStandalone){ slot.innerHTML=""; return; } // already installed → hide
+  if(deferredPrompt){
+    // Android / Chrome — real install button
+    slot.innerHTML=`<div class="install">
+      <h4>${icon(ICN.plus,17,'var(--pine)')} Add to Home Screen</h4>
+      <p>Install this like an app — opens fullscreen, works offline, your data stays saved.</p>
+      <button class="btn-install" onclick="doInstall()">${icon(ICN.plus,17)} Install app</button>
+    </div>`;
+  } else if(isIOS){
+    slot.innerHTML=`<div class="install">
+      <h4>${icon(ICN.plus,17,'var(--pine)')} Add to Home Screen</h4>
+      <p class="steps">On iPhone: tap the <b>Share</b> button in Safari, then <b>“Add to Home Screen”</b>. It opens like an app and keeps your data.</p>
+    </div>`;
+  } else {
+    slot.innerHTML=`<div class="install">
+      <h4>${icon(ICN.plus,17,'var(--pine)')} Add to Home Screen</h4>
+      <p class="steps">Open your browser menu (⋮) and tap <b>“Add to Home screen”</b> / <b>“Install app”</b>. Opens like an app and keeps your data saved.</p>
+    </div>`;
+  }
+}
+function doInstall(){
+  if(!deferredPrompt) return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.finally(()=>{ deferredPrompt=null; renderInstall(); });
+}
+window.addEventListener('beforeinstallprompt',(e)=>{ e.preventDefault(); deferredPrompt=e; renderInstall(); });
+window.addEventListener('appinstalled',()=>{ deferredPrompt=null; renderInstall(); });
+
+// register a tiny inline service worker so it's installable + works offline after first open
+if('serviceWorker' in navigator){
+  const swCode = "self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>self.clients.claim());self.addEventListener('fetch',e=>{e.respondWith(caches.open('tripsplit-v1').then(c=>c.match(e.request).then(r=>r||fetch(e.request).then(res=>{c.put(e.request,res.clone());return res;}).catch(()=>r))))});";
+  const blob=new Blob([swCode],{type:'application/javascript'});
+  navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(()=>{});
+}
+
+// inject web app manifest dynamically (so single-file still installs)
+const manifest={
+  name:"Trip Split", short_name:"Trip Split", display:"standalone",
+  background_color:"#f4efe5", theme_color:"#2f4a3a", start_url:".",
+  icons:[{src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='42' fill='%232f4a3a'/%3E%3Cpath d='M64 42 96 106 136 66 165 150 H48 z' fill='%23c79a4a'/%3E%3C/svg%3E", sizes:"192x192", type:"image/svg+xml"}]
+};
+const mlink=document.createElement('link');
+mlink.rel='manifest';
+mlink.href=URL.createObjectURL(new Blob([JSON.stringify(manifest)],{type:'application/json'}));
+document.head.appendChild(mlink);
+
+load();
+render();
+renderInstall();
+</script>
+</body>
+</html>
