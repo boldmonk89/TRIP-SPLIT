@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Trip Split">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' fill='%23101010'/%3E%3Cpath d='M56 140L124 40' stroke='%23fff' stroke-width='13'/%3E%3C/svg%3E">
+<title>Trip Split</title>
+<style>
+  :root{
+    --bg:#f7f7f7; --card:#fff; --ink:#222222; --dim:#717171; --faint:#b0b0b0;
+    --line:#ebebeb; --edge:#dddddd; --brand:#ff385c; --pos:#008a05; --neg:#c13515;
+    --sh:0 1px 2px rgba(0,0,0,.05), 0 4px 14px rgba(0,0,0,.05);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    background:var(--bg);color:var(--ink);line-height:1.5;font-size:15px;
+    -webkit-font-smoothing:antialiased;
+    padding-bottom:calc(78px + env(safe-area-inset-bottom));
+  }
+  button{font-family:inherit;color:inherit;cursor:pointer}
+  input,select{font-family:inherit;color:inherit}
+  input[type=number]{-moz-appearance:textfield}
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+  .wrap{max-width:540px;margin:0 auto;padding:0 16px}
+  .n{font-variant-numeric:tabular-nums}
+
+  /* header */
+  header{background:var(--card);padding:22px 0 20px;border-bottom:1px solid var(--line)}
+  header h1{font-size:26px;font-weight:700;letter-spacing:-.035em}
+  .trip{font-size:14px;color:var(--dim);margin-top:1px}
+  .status{margin-top:15px;display:inline-flex;align-items:center;gap:7px;border-radius:100px;
+    padding:8px 15px;font-size:13.5px;font-weight:600;background:#fff0f3;color:var(--brand)}
+  .status.ok{background:#eef7ee;color:var(--pos)}
+  .status.idle{background:var(--bg);color:var(--dim)}
+
+  /* bottom tab bar */
+  nav{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--card);
+    border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom)}
+  nav button{flex:1;border:0;background:none;padding:10px 0 9px;display:flex;flex-direction:column;
+    align-items:center;gap:4px;font-size:10.5px;font-weight:600;color:var(--dim);letter-spacing:.01em}
+  nav button.on{color:var(--brand)}
+  nav svg{width:23px;height:23px;stroke:currentColor;stroke-width:1.7;fill:none;
+    stroke-linecap:round;stroke-linejoin:round}
+
+  /* cards */
+  main{padding-top:16px}
+  section{background:var(--card);border-radius:16px;padding:20px;margin-bottom:16px;box-shadow:var(--sh)}
+  .shead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+  .kicker{font-size:17px;font-weight:700;letter-spacing:-.02em;color:var(--ink)}
+  .hint{font-size:13.5px;color:var(--dim);line-height:1.5}
+  .hint b{color:var(--ink);font-weight:600}
+
+  /* fields */
+  label.lbl{display:block;font-size:12.5px;font-weight:600;color:var(--dim);margin-bottom:7px}
+  .f{width:100%;font-size:16px;padding:14px 15px;border:1px solid var(--edge);border-radius:12px;background:var(--card)}
+  .f:focus{outline:none;border-color:var(--ink);box-shadow:0 0 0 1px var(--ink)}
+  .f.num{font-variant-numeric:tabular-nums;font-weight:600}
+  select.f{-webkit-appearance:none;appearance:none;font-weight:600;
+    background-image:linear-gradient(45deg,transparent 50%,var(--dim) 50%),linear-gradient(135deg,var(--dim) 50%,transparent 50%);
+    background-position:calc(100% - 19px) 24px,calc(100% - 14px) 24px;background-size:5px 5px;background-repeat:no-repeat}
+  .money{display:flex;align-items:center;border:1px solid var(--edge);border-radius:12px;background:var(--card);padding-left:14px}
+  .money:focus-within{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink)}
+  .money span{font-size:15px;color:var(--faint);font-weight:600}
+  .money input{flex:1;min-width:0;border:0;background:none;font-size:16px;font-weight:600;
+    font-variant-numeric:tabular-nums;padding:14px 14px 14px 5px}
+  .money input:focus{outline:none}
+  .duo{display:flex;gap:10px}
+  .duo>*{flex:1;min-width:0}
+
+  /* buttons */
+  .btn{width:100%;border:0;border-radius:12px;background:var(--brand);color:#fff;padding:15px;
+    font-size:16px;font-weight:600;margin-top:20px}
+  .btn:active{filter:brightness(.93)}
+  .btn.line{background:var(--card);color:var(--ink);border:1px solid var(--ink);font-size:14.5px;padding:12px}
+  .link{border:0;background:none;padding:0;font-size:13.5px;font-weight:600;color:var(--ink);
+    text-decoration:underline;text-underline-offset:3px}
+  .opts{display:flex;flex-wrap:wrap;gap:8px}
+  .opt{border:1px solid var(--edge);background:var(--card);border-radius:100px;padding:9px 16px;
+    font-size:14px;font-weight:600;color:var(--ink)}
+  .opt.on{border-color:var(--ink);background:var(--ink);color:#fff}
+
+  /* rows */
+  .row{display:flex;align-items:center;gap:12px;padding:14px 0;border-top:1px solid var(--line)}
+  .row:first-child{border-top:0}
+  .row .body{flex:1;min-width:0}
+  .row .t{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .row .s{font-size:13px;color:var(--dim);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .row .amt{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.02em;
+    text-align:right;flex-shrink:0}
+  .tag{font-size:11px;font-weight:600;color:var(--dim);background:var(--bg);border-radius:100px;
+    padding:5px 11px;flex-shrink:0}
+  .ini{width:36px;height:36px;flex-shrink:0;border-radius:50%;background:var(--ink);color:#fff;
+    display:grid;place-items:center;font-size:13px;font-weight:600}
+  .x{border:0;background:none;padding:3px 0 0;font-size:12.5px;color:var(--dim);
+    text-decoration:underline;text-underline-offset:2px}
+  .empty{padding:30px 0;font-size:14px;color:var(--dim);text-align:center}
+  .daybar{display:flex;align-items:baseline;justify-content:space-between;gap:10px;
+    padding:20px 0 4px;border-top:1px solid var(--line);margin-top:6px}
+  .daybar:first-child{border-top:0;padding-top:0;margin-top:0}
+  .daybar b{font-size:13px;font-weight:700}
+  .daybar span{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--dim)}
+
+  /* settlement */
+  .pay{border-top:1px solid var(--line);padding:16px 0}
+  .pay:first-child{border-top:0;padding-top:0}
+  .payline{display:flex;align-items:center;gap:11px}
+  .payline .who{font-size:16px;font-weight:700;letter-spacing:-.02em}
+  .payline .amt{margin-left:auto;font-size:17px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .payline .amt.zero{font-size:13.5px;font-weight:600;color:var(--pos);letter-spacing:0}
+  .owe{margin:12px 0 0 47px}
+  .oweline{display:flex;align-items:baseline;gap:8px}
+  .oweline .arrow{color:var(--faint);font-size:13px}
+  .oweline .who2{font-size:14.5px;font-weight:600}
+  .oweline .amt2{margin-left:auto;font-size:15.5px;font-weight:700;font-variant-numeric:tabular-nums}
+  .why{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+  .why span{font-size:11.5px;font-weight:600;color:var(--dim);background:var(--bg);
+    border-radius:100px;padding:5px 11px}
+  .settled{display:flex;align-items:center;gap:10px;padding:13px 0;border-top:1px solid var(--line);
+    font-size:14px;color:var(--dim)}
+  .settled:first-child{border-top:0}
+  .settled .amt{margin-left:auto;font-weight:700;font-variant-numeric:tabular-nums;color:var(--ink)}
+  .allsquare{padding:34px 0;text-align:center}
+  .allsquare b{display:block;font-size:17px;font-weight:700;margin-bottom:4px}
+
+  /* people */
+  .person{border-top:1px solid var(--line)}
+  .person:first-child{border-top:0}
+  .phead{width:100%;border:0;background:none;padding:16px 0;display:flex;align-items:center;gap:12px;text-align:left}
+  .person:first-child .phead{padding-top:0}
+  .phead .t{font-size:16px;font-weight:700;letter-spacing:-.02em}
+  .phead .s{font-size:13px;font-variant-numeric:tabular-nums;color:var(--dim);margin-top:1px}
+  .net{margin-left:auto;font-size:16px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .pos{color:var(--pos)} .neg{color:var(--neg)}
+  .caret{color:var(--faint);font-size:11px;width:11px;flex-shrink:0}
+  .detail{padding:0 0 18px 48px}
+  .drow{display:flex;gap:10px;padding:7px 0;font-size:14px}
+  .drow .amt{margin-left:auto;font-weight:600;font-variant-numeric:tabular-nums}
+
+  .note{background:var(--bg);border-radius:12px;padding:14px 15px;font-size:13.5px;color:var(--dim);line-height:1.55}
+  .note b{color:var(--ink);font-weight:600}
+  .warn{background:#fff0f3;color:var(--neg)}
+  .warn b{color:var(--neg)}
+  footer{padding:4px 0 8px;font-size:12.5px;color:var(--faint);text-align:center}
+  .role{margin-top:9px;font-size:12.5px;color:var(--dim)}
+  .role b{color:var(--ink);font-weight:600}
+  .acts{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <h1>Trip Split</h1>
+    <p class="trip" id="trip"></p>
+    <div class="status" id="status"></div>
+    <div class="role" id="role"></div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div id="view"></div>
+  <div id="install"></div>
+  <footer id="foot"></footer>
+</main>
+
+<nav>
+  <button data-tab="log" class="on">
+    <svg viewBox="0 0 24 24"><path d="M4 4h16v16l-3-2-3 2-3-2-3 2-2-1V4z"/><path d="M8 9h8M8 13h5"/></svg>
+    Log
+  </button>
+  <button data-tab="settle">
+    <svg viewBox="0 0 24 24"><path d="M3 8h14l-3-3M21 16H7l3 3"/></svg>
+    Split
+  </button>
+  <button data-tab="trip">
+    <svg viewBox="0 0 24 24"><path d="M5 17H3v-6l2-5h11l2 5v6h-2"/><circle cx="7.5" cy="17" r="2"/><circle cx="16.5" cy="17" r="2"/></svg>
+    Trip
+  </button>
+</nav>
+
+<script>
+const FRIENDS = ["Archit","Satwik","Kripansh","Tejas","Akshat"];
+const OWNER = "Tejas";   // the one holding the owner link; everyone else reads only
+const TRIP = "Delhi · Mussoorie · Landour · Dhanaulti · 8–11 Sep";
+
+// ---- the shared ledger ----
+// The key below is meant to be public — on its own it can reach nothing. Every
+// table has RLS on with no policies and no grants, so the only way in is the
+// three functions, and each one asks for a token before it hands anything over.
+// The owner secret can write. A member token can only read.
+const SB_URL = "https://blqllckizxsisvlnnsgl.supabase.co";
+const SB_KEY = "sb_publishable_DXfw_KDpFMgxmmWFvfxgFg_UWzvhJ2r";
+
+async function rpc(fn, args){
+  const r = await fetch(SB_URL+"/rest/v1/rpc/"+fn, {
+    method:"POST",
+    headers:{ apikey:SB_KEY, Authorization:"Bearer "+SB_KEY, "Content-Type":"application/json" },
+    body: JSON.stringify(args),
+  });
+  if(!r.ok) throw new Error("rpc "+fn+" failed: "+r.status);
+  return r.json();
+}
+
+// The official pool, and only this. Whatever extra cash anyone carries is
+// their own business and never appears in any number in this app.
+const CAPITAL = { Archit:12000, Satwik:10000, Kripansh:12000, Tejas:12000, Akshat:12000 };
+
+const CATS = { car:"Car", fuel:"Fuel", toll:"Toll", stay:"Stay", food:"Food", activity:"Activity", misc:"Misc" };
+
+// The one genuinely fixed cost. Everything else gets decided on the road and
+// logged as it is actually paid.
+const CAR_RATE = 3300;
+const CAR_DAYS = 3;
+
+// Planning projection only — never touches anyone's balance.
+// Delhi (Samaypur Badli) to Mussoorie is 262km by road via NH344G, of which the
+// last ~35km is the climb from Dehradun. Mussoorie -> Landour -> Dhanaulti is
+// another ~35km of hill road. So each way: 227km of highway, then 70km of hills.
+// Landour sits just above Mussoorie, so it rides on the buffer below.
+// Mileage is deliberately worst-case — a retrofitted CNG kit on a loaded Creta,
+// and petrol on steep sections with five up, luggage and the AC running.
+const PLAN = {
+  cngKm:454, cngEff:12, cngRate:85,    // 227km each way, Samaypur Badli <-> Dehradun
+  petKm:140, petEff:9,  petRate:105,   // 70km each way, Dehradun -> Mussoorie -> Dhanaulti
+  buffer:100,                          // local running up there, charged at petrol rates
+  toll:1340,                           // Rs670 each way, FASTag only
+};
+
+const rupee = n => "₹" + Math.round(n).toLocaleString("en-IN");
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const initials = f => f.slice(0,2).toUpperCase();
+const num = v => Number(v)||0;
+const N = FRIENDS.length;
+
+// ---- state ----
+let state = {
+  // expense: {id, ts, cat, desc, payer, mode, shares:{name:rupees}}
+  // shares is the whole truth — who owes what for this bill. "equal" mode fills
+  // it by dividing five ways, "each" mode fills it from what each person's own
+  // item actually cost. calc() never needs to know which was used.
+  expenses: [],
+  paybacks: [],   // {id, ts, from, to, amount} — cash actually handed over
+  plan: {...PLAN, rate:CAR_RATE, days:CAR_DAYS},
+  tab:"log", cat:"food", payer:FRIENDS[0], openPerson:null, showPlan:false,
+  mode:"equal", draft:{},   // draft holds the per-person amounts being typed
+
+  // who is looking: "owner" can change things, "viewer" can only read
+  role:null, me:null, members:[],
+  gate:"loading",           // null once we have a session; otherwise which screen to show
+  gateMsg:"", joinToken:null, showOwnerLink:false,
+};
+const canEdit = () => state.role === "owner";
+
+// Expenses saved before per-item splitting existed only had a total; treat those
+// as an even split so old entries keep working.
+const sharesOf = e => e.shares || Object.fromEntries(
+  splitEqual(Math.round(num(e.amount)), N, 0).map((v,i)=>[FRIENDS[i],v]));
+const amtOf = e => FRIENDS.reduce((s,f)=>s+Math.round(num(sharesOf(e)[f])),0);
+const draftTotal = () => FRIENDS.reduce((s,f)=>s+Math.round(num(state.draft[f])),0);
+
+// ---- session ----
+// One key in localStorage is the whole login: the owner secret for me, a member
+// token for everyone else. The server decides which it is; the app never does.
+const KK = "tripsplit5:key", CK = "tripsplit5:cache", JK = "tripsplit5:join", MK = "tripsplit5:migrated";
+let KEY = null;
+
+function ls(k, v){
+  try{ return v===undefined ? localStorage.getItem(k) : (localStorage.setItem(k,v), v); }
+  catch(e){ return null; }
+}
+
+// The last ledger we saw, kept so the app still opens something useful in the
+// hills with no signal. It is a cache, never the source of truth.
+function applyLedger(d, cache){
+  state.role     = d.role;
+  state.me       = d.me || null;
+  state.expenses = d.expenses || [];
+  state.paybacks = d.paybacks || [];
+  state.members  = d.members  || [];
+  state.plan     = {...PLAN, rate:CAR_RATE, days:CAR_DAYS, ...(d.plan || {})};
+  state.gate     = null;
+  if(cache !== false) ls(CK, JSON.stringify(d));
+}
+
+// Every change goes through here. Nothing is written locally first — if the
+// server did not take it, it did not happen, and the form keeps what you typed.
+async function push(op, data){
+  if(!canEdit()) return false;
+  try{
+    const res = await rpc("owner_apply", {p_secret:KEY, p_op:op, p_data:data||{}});
+    if(res.error){ alert(res.error); return false; }
+    applyLedger(res);
+    return true;
+  }catch(e){
+    alert("No signal — that was not saved. Try again once you are back online.");
+    return false;
+  }finally{
+    render();
+  }
+}
+
+async function refresh(){
+  const d = await rpc("get_ledger", {p_token:KEY});
+  if(d.role === "none"){
+    ls(KK, ""); KEY = null;
+    state.gate = "badkey";
+    state.gateMsg = "That link no longer works. Ask Tejas for a fresh one.";
+    return;
+  }
+  applyLedger(d);
+}
+
+// Whatever was already sitting in this browser from before the app went shared,
+// lifted up once so nothing from the trip is lost.
+async function migrateLocal(){
+  if(ls(MK)) return;
+  let old = {e:[], p:[], plan:null};
+  try{
+    old.e    = JSON.parse(ls("tripsplit4:expenses") || "[]");
+    old.p    = JSON.parse(ls("tripsplit4:paybacks") || "[]");
+    old.plan = JSON.parse(ls("tripsplit4:plan") || "null");
+  }catch(e){}
+  const hasOld = old.e.length || old.p.length;
+  // Only ever into an empty ledger, so this can never double up on real data.
+  if(!hasOld || state.expenses.length || state.paybacks.length){ ls(MK, "1"); return; }
+  const payload = {
+    expenses: old.e.map(x => ({...x, id:String(x.id), ts:x.ts || x.id, shares:sharesOf(x)})),
+    paybacks: old.p.map(x => ({...x, id:String(x.id), ts:x.ts || x.id})),
+  };
+  if(old.plan) payload.plan = old.plan;
+  if(await push("import", payload)) ls(MK, "1");
+}
+
+// ---- money: whole rupees only, everywhere ----
+// Splits an integer amount into n integer parts that sum back to it exactly.
+// The leftover rupees rotate by seed so the same person is not always the one
+// carrying the extra rupee.
+function splitEqual(amount, n, seed){
+  const base=Math.floor(amount/n), rem=amount-base*n;
+  const out=new Array(n).fill(base);
+  for(let i=0;i<rem;i++) out[(seed+i)%n]++;
+  return out;
+}
+
+// ---- planning projection (informational, never in a balance) ----
+function legCost(km,eff,rate){ return num(eff)>0 ? Math.round(num(km)/num(eff)*num(rate)) : 0; }
+// The buffer rides on the petrol leg — local running happens up in the hills,
+// and it is the dearer of the two rates, so it is the cautious place to put it.
+function petKmTotal(){ const p=state.plan; return num(p.petKm)+num(p.buffer); }
+function planFuel(){
+  const p=state.plan;
+  return legCost(p.cngKm,p.cngEff,p.cngRate) + legCost(petKmTotal(),p.petEff,p.petRate);
+}
+function planCar(){ const p=state.plan; return num(p.rate)*num(p.days); }
+function planTotal(){ return planCar()+planFuel()+num(state.plan.toll); }
+
+// ---- the real ledger ----
+// Everything anyone pays is split equally across all five. Who paid it decides
+// who is owed. Nothing is weighted, nothing is excluded.
+function calc(){
+  const paid   = Object.fromEntries(FRIENDS.map(f=>[f,0]));
+  const share  = Object.fromEntries(FRIENDS.map(f=>[f,0]));
+  // debt[a][b] = rupees a still owes b
+  const debt = Object.fromEntries(FRIENDS.map(a=>[a,Object.fromEntries(FRIENDS.map(b=>[b,0]))]));
+  // why[a][b][cat] = how much of that is which kind of spending
+  const why  = Object.fromEntries(FRIENDS.map(a=>[a,Object.fromEntries(FRIENDS.map(b=>[b,{}]))]));
+  let total=0;
+
+  for(const e of state.expenses){
+    const sh=sharesOf(e);
+    paid[e.payer]+=amtOf(e); total+=amtOf(e);
+    for(const f of FRIENDS){
+      const part=Math.round(num(sh[f]));
+      share[f]+=part;
+      if(f!==e.payer && part>0){
+        debt[f][e.payer]+=part;
+        why[f][e.payer][e.cat]=(why[f][e.payer][e.cat]||0)+part;
+      }
+    }
+  }
+
+  // cash already handed over cancels debt in that direction
+  for(const p of state.paybacks) debt[p.from][p.to]-=Math.round(p.amount);
+
+  // net every pair down to one direction
+  const transfers=[];
+  for(let i=0;i<N;i++) for(let j=i+1;j<N;j++){
+    const a=FRIENDS[i], b=FRIENDS[j];
+    const n=debt[a][b]-debt[b][a];
+    if(n>0)      transfers.push({from:a, to:b, amount:n,  why:why[a][b]});
+    else if(n<0) transfers.push({from:b, to:a, amount:-n, why:why[b][a]});
+  }
+  transfers.sort((x,y)=>y.amount-x.amount);
+
+  // net position: positive = owed money back, negative = still owes
+  const net=Object.fromEntries(FRIENDS.map(f=>[f,paid[f]-share[f]]));
+  for(const p of state.paybacks){ net[p.from]+=Math.round(p.amount); net[p.to]-=Math.round(p.amount); }
+
+  // what should physically still be in each pocket — the discrepancy check
+  const pocket=Object.fromEntries(FRIENDS.map(f=>[f,CAPITAL[f]-paid[f]]));
+  for(const p of state.paybacks){ pocket[p.from]-=Math.round(p.amount); pocket[p.to]+=Math.round(p.amount); }
+
+  return {paid,share,net,debt,transfers,total,pocket};
+}
+
+// ---- actions ----
+function setTab(t){ state.tab=t; state.openPerson=null; render(); renderInstall(); }
+function setCat(k){ state.cat=k; render(); }
+function togglePerson(f){ state.openPerson = state.openPerson===f ? null : f; render(); }
+function togglePlan(){ state.showPlan=!state.showPlan; render(); }
+// Typing only moves the local number and the note under it. The plan is sent
+// once, on blur, so a four-digit toll is one write instead of four.
+function setPlan(key,v){ if(v!==""&&!isNaN(Number(v))){ state.plan[key]=Number(v); updatePlanNote(); } }
+function fixPlan(key,v){ if(v===""||isNaN(Number(v))) state.plan[key]=0; push("set_plan", state.plan); }
+
+function setMode(m){ state.mode=m; render(); }
+function setDraft(f,v){
+  state.draft[f]=v;
+  const el=document.getElementById("draftTotal");
+  if(el) el.textContent=rupee(draftTotal());
+}
+
+async function addExpense(){
+  const desc=document.getElementById("f-desc").value.trim();
+  if(!desc){ alert("Needs a label."); return; }
+  const shares={};
+  if(state.mode==="equal"){
+    const amt=Math.round(parseFloat(document.getElementById("f-amt").value));
+    if(!amt||amt<=0){ alert("Needs an amount."); return; }
+    splitEqual(amt,N,state.expenses.length).forEach((v,i)=>shares[FRIENDS[i]]=v);
+  }else{
+    for(const f of FRIENDS) shares[f]=Math.round(num(state.draft[f]));
+    if(FRIENDS.some(f=>shares[f]<0)){ alert("Amounts can't be negative."); return; }
+    if(FRIENDS.reduce((s,f)=>s+shares[f],0)<=0){ alert("Put in at least one person's amount."); return; }
+  }
+  const now=Date.now();
+  if(await push("add_expense", {id:String(now), ts:now, cat:state.cat, desc, payer:state.payer, mode:state.mode, shares})){
+    state.draft={};
+    render();
+  }
+}
+function delExpense(id){
+  if(!confirm("Remove this expense?")) return;
+  push("del_expense", {id:String(id)});
+}
+
+function markPaid(from,to,amount){
+  if(!confirm(from+" handed "+rupee(amount)+" to "+to+"?")) return;
+  const now=Date.now();
+  push("add_payback", {id:String(now), ts:now, from, to, amount:Math.round(amount)});
+}
+function delPayback(id){
+  if(!confirm("Undo this payback?")) return;
+  push("del_payback", {id:String(id)});
+}
+
+function resetAll(){
+  if(!confirm("Clear every expense and payback, for everyone? The car rate and the plan stay as they are.")) return;
+  push("reset", {});
+}
+
+// ---- invites ----
+const inviteLink = token => location.origin + location.pathname + "?join=" + token;
+
+function inviteFriend(name){ push("invite", {name}); }
+function uninvite(token, name){
+  if(!confirm("Remove "+name+"'s invite? Their link stops working straight away.")) return;
+  push("uninvite", {token});
+}
+async function copyLink(token){
+  const url = token ? inviteLink(token) : ownerLink();
+  try{ await navigator.clipboard.writeText(url); alert("Link copied."); }
+  catch(e){ prompt("Copy this link:", url); }
+}
+function waInvite(name, token){
+  const msg = name+", here is the trip hisaab: "+inviteLink(token)
+    +"\n\nOpen it, type your name, and you can see everything — who paid what and who owes whom. Live.";
+  window.open("https://wa.me/?text="+encodeURIComponent(msg), "_blank");
+}
+
+// ---- joining ----
+async function doJoin(){
+  const el = document.getElementById("j-name");
+  const name = el ? el.value.trim() : "";
+  if(name.length < 2){ state.gateMsg = "Please type your name first."; render(); return; }
+  try{
+    const res = await rpc("claim_invite", {p_token:state.joinToken, p_name:name});
+    if(res.error){ state.gateMsg = res.error; render(); return; }
+    KEY = res.memberToken;
+    ls(KK, KEY); ls(JK, state.joinToken);
+    await refresh();
+  }catch(e){
+    state.gateMsg = "No signal. Try again in a moment.";
+  }
+  render();
+}
+
+// ---- share ----
+const pad = (s,w) => String(s) + " ".repeat(Math.max(0, w - String(s).length));
+function dayKey(ts){ return new Date(ts).toLocaleDateString("en-IN",{day:"numeric",month:"short"}); }
+
+function whatsappText(){
+  const t=calc();
+  let s="*TRIP SPLIT* — "+TRIP+"\n";
+  s+="Shared things split 5 ways. Food is per person — whatever each of us ordered.\n\n";
+
+  s+="*Money each of us has spent*\n";
+  for(const f of FRIENDS){
+    const bal=t.net[f];
+    s+="  "+pad(f,11)+pad(rupee(t.paid[f]),9);
+    s+= bal>0 ? "gets back "+rupee(bal) : bal<0 ? "owes "+rupee(-bal) : "square";
+    s+="\n";
+  }
+  s+="\n*What each of us used up*\n";
+  for(const f of FRIENDS) s+="  "+pad(f,11)+rupee(t.share[f])+"\n";
+
+  s+="\n*Who pays whom*\n";
+  if(t.total===0){
+    s+="  Nothing logged yet.\n";
+  } else if(t.transfers.length===0){
+    s+="  All square — nobody owes anybody.\n";
+  } else {
+    for(const f of FRIENDS){
+      const mine=t.transfers.filter(x=>x.from===f);
+      if(!mine.length){ s+="  "+pad(f,11)+"nothing to pay\n"; continue; }
+      s+="  "+f+"\n";
+      for(const x of mine){
+        const bits=Object.entries(x.why).filter(([,v])=>v>0).map(([k])=>CATS[k].toLowerCase());
+        s+="     -> "+pad(x.to,10)+"*"+rupee(x.amount)+"*"+(bits.length?"  ("+bits.join(", ")+")":"")+"\n";
+      }
+    }
+  }
+
+  if(state.paybacks.length){
+    s+="\n*Already paid back*\n";
+    for(const p of state.paybacks) s+="  "+p.from+" -> "+p.to+"  "+rupee(p.amount)+"\n";
+  }
+  return s;
+}
+function shareWA(){ window.open("https://wa.me/?text="+encodeURIComponent(whatsappText()),"_blank"); }
+
+// ---- render ----
+function updateStatus(t){
+  const n=t.transfers.length, el=document.getElementById("status");
+  el.className = "status" + (t.total===0 ? " idle" : n===0 ? " ok" : "");
+  el.textContent =
+    t.total===0 ? "Nothing logged yet"
+    : n===0 ? "All square — nobody owes anybody"
+    : `${n} payment${n>1?"s":""} pending`;
+}
+
+function planNoteHTML(){
+  const p=state.plan;
+  const cng=legCost(p.cngKm,p.cngEff,p.cngRate), pet=legCost(petKmTotal(),p.petEff,p.petRate);
+  return `Car ${rupee(planCar())} · CNG ${rupee(cng)} (${num(p.cngKm)}km at ${num(p.cngEff)}km/kg)
+    · petrol ${rupee(pet)} (${num(p.petKm)}km + ${num(p.buffer)}km buffer at ${num(p.petEff)}km/l)
+    · toll ${rupee(num(p.toll))}
+    = <b>${rupee(planTotal())}</b> over ${num(p.cngKm)+petKmTotal()}km, about <b>${rupee(Math.round(planTotal()/N))}</b> each.`;
+}
+function updatePlanNote(){ const el=document.getElementById("planNote"); if(el) el.innerHTML=planNoteHTML(); }
+
+function viewLog(t){
+  const byDay=[];
+  [...state.expenses].reverse().forEach(e=>{
+    const k=dayKey(e.ts||e.id);
+    if(!byDay.length||byDay[byDay.length-1].k!==k) byDay.push({k,items:[]});
+    byDay[byDay.length-1].items.push(e);
+  });
+  return `
+  ${canEdit() ? `
+  <section>
+    <div class="shead"><div class="kicker">Log a payment</div></div>
+    <div class="hint" style="margin:-8px 0 16px">Whoever actually handed over the money. It splits 5 ways automatically.</div>
+    <div class="opts" style="margin-bottom:16px">
+      ${Object.entries(CATS).map(([k,l])=>`<button class="opt ${state.cat===k?"on":""}" onclick="setCat('${k}')">${l}</button>`).join("")}
+    </div>
+    <label class="lbl">What was it</label>
+    <input class="f" id="f-desc">
+    <div style="margin-top:12px;max-width:60%">
+      <label class="lbl">Paid by</label>
+      <select class="f" onchange="state.payer=this.value;render()">
+        ${FRIENDS.map(f=>`<option ${state.payer===f?"selected":""}>${f}</option>`).join("")}
+      </select>
+    </div>
+
+    <div class="opts" style="margin-top:18px">
+      <button class="opt ${state.mode==="equal"?"on":""}" onclick="setMode('equal')">Split equally</button>
+      <button class="opt ${state.mode==="each"?"on":""}" onclick="setMode('each')">Each his own</button>
+    </div>
+
+    ${state.mode==="equal" ? `
+      <div style="margin-top:14px;max-width:60%">
+        <label class="lbl">Total amount</label>
+        <div class="money"><span>₹</span><input type="number" inputmode="numeric" id="f-amt" placeholder="0"></div>
+      </div>
+      <div class="hint" style="margin-top:9px">Divided by 5 — everyone owes ${state.payer} the same. Use this for the car, fuel, toll, a room.</div>
+    ` : `
+      <div class="hint" style="margin:14px 0 4px">What each person's own order cost. Leave blank for anyone who had nothing — he pays nothing.</div>
+      ${FRIENDS.map(f=>`
+        <div class="row" style="padding:9px 0">
+          <div class="ini">${initials(f)}</div>
+          <div class="body"><div class="t">${f}${f===state.payer?` <span style="color:var(--faint);font-weight:400">· paying</span>`:""}</div></div>
+          <div class="money" style="width:132px"><span>₹</span><input type="number" inputmode="numeric"
+            value="${state.draft[f]??""}" placeholder="0" oninput="setDraft('${f}',this.value)"></div>
+        </div>`).join("")}
+      <div class="row" style="border-top:1px solid var(--edge)">
+        <div class="body"><div class="t">Bill total</div>
+          <div class="s">should match what ${state.payer} handed over</div></div>
+        <div class="amt" id="draftTotal">${rupee(draftTotal())}</div>
+      </div>
+    `}
+    <button class="btn" onclick="addExpense()">Add</button>
+  </section>
+  ` : ""}
+
+  <section>
+    <div class="shead">
+      <div class="kicker">Ledger · ${state.expenses.length}</div>
+      ${canEdit()&&(state.expenses.length||state.paybacks.length)?`<button class="link" onclick="resetAll()">Clear all</button>`:""}
+    </div>
+    ${state.expenses.length===0 ? `<div class="empty">Nothing paid yet.</div>` :
+      byDay.map(d=>{
+        const dayTotal=d.items.reduce((s,e)=>s+amtOf(e),0);
+        return `<div class="daybar"><b>${d.k}</b><span>${rupee(dayTotal)}</span></div>
+        ${d.items.map(e=>{
+          const sh=sharesOf(e);
+          const eaters=FRIENDS.filter(f=>Math.round(num(sh[f]))>0);
+          const sub = e.mode==="each"
+            ? eaters.map(f=>`${f} ${rupee(sh[f])}`).join(" · ")
+            : `${rupee(Math.round(amtOf(e)/N))} each`;
+          return `<div class="row">
+            <div class="tag">${CATS[e.cat]}</div>
+            <div class="body">
+              <div class="t">${esc(e.desc)}</div>
+              <div class="s">${e.payer} paid · ${sub}</div>
+            </div>
+            <div>
+              <div class="amt">${rupee(amtOf(e))}</div>
+              ${canEdit()?`<button class="x" onclick="delExpense('${e.id}')">remove</button>`:""}
+            </div>
+          </div>`;
+        }).join("")}`;
+      }).join("")}
+  </section>
+  `;
+}
+
+
+function viewSettle(t){
+  const done=[...state.paybacks].reverse();
+  return `
+  <section>
+    <div class="shead"><div class="kicker">Who pays whom</div></div>
+    ${t.total===0 ? `<div class="empty">Log a payment first and this fills itself in.</div>`
+      : t.transfers.length===0 ? `<div class="allsquare"><b>All square.</b><span class="hint">Nobody owes anybody right now.</span></div>`
+      : `<div class="hint" style="margin:-8px 0 6px">${canEdit()?"Updated live, every time anything is logged. Tap a row once the cash actually changes hands.":"Updated the moment "+OWNER+" logs anything."}</div>
+        ${FRIENDS.map(f=>{
+          const mine=t.transfers.filter(x=>x.from===f);
+          const owes=mine.reduce((s,x)=>s+x.amount,0);
+          return `<div class="pay">
+            <div class="payline">
+              <div class="ini">${initials(f)}</div>
+              <div class="who">${f}</div>
+              <div class="amt${owes===0?" zero":""}">${owes===0?"nothing to pay":rupee(owes)}</div>
+            </div>
+            ${mine.map(x=>{
+              const bits=Object.entries(x.why).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1])
+                .map(([k,v])=>`<span>${CATS[k]} ${rupee(v)}</span>`).join("");
+              return `<div class="owe">
+                <div class="oweline"><span class="arrow">→</span><span class="who2">${x.to}</span><span class="amt2">${rupee(x.amount)}</span></div>
+                ${bits?`<div class="why">${bits}</div>`:""}
+                ${canEdit()?`<button class="btn line" style="margin-top:10px" onclick="markPaid('${f}','${x.to}',${x.amount})">Paid ${x.to} ${rupee(x.amount)}</button>`:""}
+              </div>`;
+            }).join("")}
+          </div>`;
+        }).join("")}`}
+  </section>
+
+  <section>
+    <div class="shead"><div class="kicker">Each person</div></div>
+    <div class="hint" style="margin:-8px 0 14px"><b>Spent</b> is the money he actually handed over, out of his own pocket. <b>His share</b> is what he himself used up — a fifth of anything shared, plus exactly what he ordered on food.<br>Spent more than his share, the extra comes back to him. Spent less, he pays the difference.</div>
+    ${FRIENDS.map(f=>{
+      const bal=t.net[f], pos=bal>=0, open=state.openPerson===f;
+      const mine=state.expenses.filter(e=>e.payer===f);
+      return `<div class="person">
+        <button class="phead" onclick="togglePerson('${f}')">
+          <div class="ini">${initials(f)}</div>
+          <div>
+            <div class="t">${f}</div>
+            <div class="s">spent ${rupee(t.paid[f])} · his share ${rupee(t.share[f])}</div>
+          </div>
+          <div class="net ${pos?"pos":"neg"}">${(bal<0?"−":"+")+rupee(Math.abs(bal))}</div>
+          <div class="caret">${open?"▲":"▼"}</div>
+        </button>
+        ${open?`<div class="detail">
+          <div class="kicker" style="margin-bottom:8px">Paid for</div>
+          ${mine.length===0
+            ? `<div class="hint">Hasn't paid for anything yet.</div>`
+            : mine.map(e=>`<div class="drow"><span>${esc(e.desc)}</span><span class="amt">${rupee(amtOf(e))}</span></div>`).join("")
+              + `<div class="drow" style="border-top:1px solid var(--line);margin-top:5px;padding-top:9px">
+                   <span style="color:var(--dim)">Total</span><span class="amt">${rupee(t.paid[f])}</span></div>`}
+          <div class="note" style="margin-top:14px">
+            ${bal>0 ? `Owed <b>${rupee(bal)}</b> back.` : bal<0 ? `Still owes <b>${rupee(-bal)}</b>.` : `Square.`}
+            Should still be holding <b>${rupee(t.pocket[f])}</b> in cash.
+          </div>
+        </div>`:""}
+      </div>`;
+    }).join("")}
+  </section>
+
+  ${done.length?`
+  <section>
+    <div class="shead"><div class="kicker">Already paid back</div></div>
+    ${done.map(p=>`<div class="settled">
+      <span>${p.from} → ${p.to}</span>
+      <span class="amt">${rupee(p.amount)}</span>
+      ${canEdit()?`<button class="x" style="padding:0 0 0 12px" onclick="delPayback('${p.id}')">undo</button>`:""}
+    </div>`).join("")}
+  </section>`:""}`;
+}
+
+function viewTrip(t){
+  return `
+  <section>
+    <div class="shead">
+      <div class="kicker">Projection · not counted</div>
+      <button class="link" onclick="togglePlan()">${state.showPlan?"Hide":"Show"}</button>
+    </div>
+    <div class="hint" style="margin:-8px 0 0">Rough idea of the car, fuel and toll before anyone pays. It stays out of every balance — only what you log above counts.</div>
+    ${state.showPlan && !canEdit() ? `<div class="note" style="margin-top:16px">${planNoteHTML()}</div>` : ""}
+    ${state.showPlan && canEdit()?`
+    <div class="duo" style="margin-top:18px">
+      <div><label class="lbl">Car per day</label>
+        <div class="money"><span>₹</span><input type="number" inputmode="numeric" value="${state.plan.rate}"
+          oninput="setPlan('rate',this.value)" onblur="fixPlan('rate',this.value)"></div></div>
+      <div><label class="lbl">Days</label>
+        <div class="money"><span>×</span><input type="number" inputmode="numeric" value="${state.plan.days}"
+          oninput="setPlan('days',this.value)" onblur="fixPlan('days',this.value)"></div></div>
+    </div>
+    <div class="kicker" style="margin:20px 0 10px">Highway on CNG</div>
+    <div class="duo">
+      <div><label class="lbl">km</label><input class="f num" type="number" inputmode="numeric" value="${state.plan.cngKm}"
+        oninput="setPlan('cngKm',this.value)" onblur="fixPlan('cngKm',this.value)"></div>
+      <div><label class="lbl">km per kg</label><input class="f num" type="number" inputmode="decimal" value="${state.plan.cngEff}"
+        oninput="setPlan('cngEff',this.value)" onblur="fixPlan('cngEff',this.value)"></div>
+      <div><label class="lbl">₹ per kg</label>
+        <div class="money"><span>₹</span><input type="number" inputmode="decimal" value="${state.plan.cngRate}"
+          oninput="setPlan('cngRate',this.value)" onblur="fixPlan('cngRate',this.value)"></div></div>
+    </div>
+    <div class="kicker" style="margin:18px 0 10px">Hills on petrol</div>
+    <div class="duo">
+      <div><label class="lbl">km</label><input class="f num" type="number" inputmode="numeric" value="${state.plan.petKm}"
+        oninput="setPlan('petKm',this.value)" onblur="fixPlan('petKm',this.value)"></div>
+      <div><label class="lbl">km per litre</label><input class="f num" type="number" inputmode="decimal" value="${state.plan.petEff}"
+        oninput="setPlan('petEff',this.value)" onblur="fixPlan('petEff',this.value)"></div>
+      <div><label class="lbl">₹ per litre</label>
+        <div class="money"><span>₹</span><input type="number" inputmode="decimal" value="${state.plan.petRate}"
+          oninput="setPlan('petRate',this.value)" onblur="fixPlan('petRate',this.value)"></div></div>
+    </div>
+    <div class="duo" style="margin-top:18px">
+      <div>
+        <label class="lbl">Buffer km</label>
+        <input class="f num" type="number" inputmode="numeric" value="${state.plan.buffer}"
+          oninput="setPlan('buffer',this.value)" onblur="fixPlan('buffer',this.value)">
+      </div>
+      <div>
+        <label class="lbl">Toll, both ways</label>
+        <div class="money"><span>₹</span><input type="number" inputmode="numeric" value="${state.plan.toll}"
+          oninput="setPlan('toll',this.value)" onblur="fixPlan('toll',this.value)"></div>
+      </div>
+    </div>
+    <div class="hint" style="margin-top:9px">Buffer covers local running up there. It is costed at the petrol rate.</div>
+    <div class="note" style="margin-top:16px" id="planNote">${planNoteHTML()}</div>
+    <div class="hint" style="margin-top:10px">Mileage is set worst-case on purpose. Correct it once you've driven a day and the projection tightens up.</div>
+    `:""}
+  </section>
+
+  ${canEdit() ? viewFriends() : ""}
+
+  <section>
+    <div class="shead"><div class="kicker">Send to the group</div></div>
+    <div class="hint" style="margin:-8px 0 0">Puts the whole thing into a WhatsApp message you can forward: what each person put in, who has to pay whom, and what's already been paid back.</div>
+    <button class="btn" onclick="shareWA()">Send to WhatsApp</button>
+  </section>`;
+}
+
+// Owner-typed names end up inside onclick, so quote them properly.
+const jq = v => "'" + String(v).replace(/\\/g, "\\\\").replace(/'/g, "\\'") + "'";
+const when = ts => ts ? new Date(ts).toLocaleString("en-IN",{day:"numeric",month:"short",hour:"numeric",minute:"2-digit"}) : "";
+const ownerLink = () => location.origin + location.pathname + "?owner=" + KEY;
+
+function viewFriends(){
+  // Everyone worth a link: the fixed five minus me, plus anyone already invited.
+  const names = [...new Set([...FRIENDS.filter(f=>f!==OWNER), ...state.members.map(m=>m.name)])];
+  const joined = state.members.filter(m=>m.joinedAs).length;
+
+  const rows = names.map(f=>{
+    const inv = state.members.find(m=>m.name===f);
+    let status, acts;
+    if(!inv){
+      status = "no link yet";
+      acts = `<button class="link" onclick="inviteFriend(${jq(f)})">Create link</button>`;
+    }else if(!inv.joinedAs){
+      status = "link ready · not opened yet";
+      acts = `<button class="link" onclick="waInvite(${jq(f)},${jq(inv.token)})">Send</button>
+              <span><button class="x" onclick="copyLink(${jq(inv.token)})">copy</button>
+              <button class="x" style="padding-left:10px" onclick="uninvite(${jq(inv.token)},${jq(f)})">remove</button></span>`;
+    }else{
+      status = `joined as <b>${esc(inv.joinedAs)}</b> · ${when(inv.joinedAt)}`;
+      acts = `<span style="color:var(--pos);font-size:12.5px;font-weight:600">in</span>
+              <span><button class="x" onclick="copyLink(${jq(inv.token)})">copy</button>
+              <button class="x" style="padding-left:10px" onclick="uninvite(${jq(inv.token)},${jq(f)})">remove</button></span>`;
+    }
+    return `<div class="row">
+      <div class="ini">${initials(f)}</div>
+      <div class="body"><div class="t">${esc(f)}</div><div class="s">${status}</div></div>
+      <div class="acts">${acts}</div>
+    </div>`;
+  }).join("");
+
+  return `
+  <section>
+    <div class="shead"><div class="kicker">Friends · ${joined} of ${names.length} joined</div></div>
+    <div class="hint" style="margin:-8px 0 14px">Each person gets their own link. They see the whole hisaab, live — and they cannot change one rupee of it. This list tells you the moment someone opens theirs.</div>
+    ${rows}
+    <div class="note" style="margin-top:18px">
+      <b>Your own link.</b> This is the one that lets you add and remove things. Bookmark it, and never forward it — whoever holds it can edit.
+      <div style="margin-top:8px">
+        <button class="link" onclick="state.showOwnerLink=!state.showOwnerLink;render()">${state.showOwnerLink?"Hide it":"Show it"}</button>
+        ${state.showOwnerLink?`
+          <div style="margin-top:8px;word-break:break-all;font-size:11.5px;color:var(--dim)">${esc(ownerLink())}</div>
+          <button class="x" onclick="copyLink(null)">copy</button>`:""}
+      </div>
+    </div>
+  </section>`;
+}
+
+function gateHTML(){
+  if(!state.gate) return null;
+  if(state.gate==="loading") return `<section><div class="empty">Opening…</div></section>`;
+  if(state.gate==="join") return `
+  <section>
+    <div class="shead"><div class="kicker">You have been invited</div></div>
+    <div class="hint" style="margin:-8px 0 16px">This is the money hisaab for ${esc(TRIP)}. Put in your name and you are in. You will see everything — who paid what, and who owes whom — and nothing you do can change any of it.</div>
+    <label class="lbl">Your name</label>
+    <input class="f" id="j-name" autocomplete="name" placeholder="Type your name">
+    ${state.gateMsg?`<div class="hint" style="margin-top:9px;color:var(--neg)">${esc(state.gateMsg)}</div>`:""}
+    <button class="btn" onclick="doJoin()">Join</button>
+  </section>`;
+  return `
+  <section>
+    <div class="shead"><div class="kicker">Invite only</div></div>
+    <div class="hint" style="margin:-8px 0 0">${esc(state.gateMsg || ("This trip is private. Ask "+OWNER+" to send you your own link."))}</div>
+  </section>`;
+}
+
+function render(){
+  document.getElementById("trip").textContent=TRIP;
+  const gate=gateHTML();
+  const nav=document.querySelector("nav"), st=document.getElementById("status");
+  const rl=document.getElementById("role"), ft=document.getElementById("foot");
+
+  if(gate){
+    nav.style.display="none"; st.style.display="none";
+    rl.textContent=""; ft.textContent="";
+    document.getElementById("install").innerHTML="";
+    document.getElementById("view").innerHTML=gate;
+    return;
+  }
+  nav.style.display=""; st.style.display="";
+
+  const t=calc();
+  updateStatus(t);
+  rl.innerHTML = canEdit()
+    ? `<b>${esc(OWNER)}</b> · you can add and remove things`
+    : `<b>${esc(state.me||"Guest")}</b> · you can look, not change`;
+  ft.textContent = canEdit()
+    ? "Shared live with everyone you invited."
+    : "Read only — only "+OWNER+" can change anything here.";
+  document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on", b.dataset.tab===state.tab));
+  document.getElementById("view").innerHTML =
+    state.tab==="log" ? viewLog(t) : state.tab==="trip" ? viewTrip(t) : viewSettle(t);
+}
+document.querySelectorAll("nav button").forEach(b=>b.addEventListener("click",()=>setTab(b.dataset.tab)));
+
+// ---- add to home screen ----
+let deferredPrompt=null;
+const isStandalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone===true;
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+function renderInstall(){
+  const slot=document.getElementById("install");
+  if(isStandalone){ slot.innerHTML=""; return; }
+  slot.innerHTML=`<section>
+    <div class="shead"><div class="kicker">Install</div></div>
+    ${deferredPrompt
+      ? `<div class="hint">Runs fullscreen and keeps working offline.</div>
+         <button class="btn" onclick="doInstall()">Add to home screen</button>`
+      : isIOS
+        ? `<div class="hint">Safari → Share → <b>Add to Home Screen</b>.</div>`
+        : `<div class="hint">Browser menu → <b>Add to Home screen</b>.</div>`}
+  </section>`;
+}
+function doInstall(){
+  if(!deferredPrompt) return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.finally(()=>{ deferredPrompt=null; renderInstall(); });
+}
+addEventListener("beforeinstallprompt",e=>{ e.preventDefault(); deferredPrompt=e; renderInstall(); });
+addEventListener("appinstalled",()=>{ deferredPrompt=null; renderInstall(); });
+
+if("serviceWorker" in navigator){
+  // Network first: online you always get the current build, offline you get the
+  // last one that loaded. The old cache-first worker could never update itself.
+  const sw="const C='tripsplit-v5';"
+    +"self.addEventListener('install',e=>self.skipWaiting());"
+    +"self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==C).map(x=>caches.delete(x)))).then(()=>self.clients.claim())));"
+    +"self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;"
+    +"e.respondWith(fetch(e.request).then(res=>{const c=res.clone();caches.open(C).then(k=>k.put(e.request,c).catch(()=>{}));return res;}).catch(()=>caches.match(e.request)));});";
+  navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:"application/javascript"}))).catch(()=>{});
+}
+
+const manifest={
+  name:"Trip Split", short_name:"Trip Split", display:"standalone",
+  background_color:"#f7f7f7", theme_color:"#ffffff", start_url:".",
+  icons:[{src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' fill='%23101010'/%3E%3Cpath d='M60 150L132 42' stroke='%23fff' stroke-width='14'/%3E%3C/svg%3E", sizes:"192x192", type:"image/svg+xml"}]
+};
+const mlink=document.createElement("link");
+mlink.rel="manifest";
+mlink.href=URL.createObjectURL(new Blob([JSON.stringify(manifest)],{type:"application/json"}));
+document.head.appendChild(mlink);
+
+async function boot(){
+  const q = new URLSearchParams(location.search);
+  const owner = q.get("owner"), join = q.get("join");
+  if(owner || join) history.replaceState(null, "", location.pathname);  // keep tokens out of the address bar
+
+  if(owner){ KEY = owner; ls(KK, owner); }
+  else KEY = ls(KK) || null;
+
+  // Put the last known ledger on screen at once, then go and get the real one.
+  try{
+    const c = JSON.parse(ls(CK) || "null");
+    if(c && KEY) applyLedger(c, false);
+  }catch(e){}
+  render();
+
+  // An invite link always asks for a name — unless it is the same link this
+  // browser already used, in which case there is nothing left to ask.
+  if(join && !(KEY && ls(JK) === join)){
+    state.joinToken = join; state.gate = "join"; state.gateMsg = "";
+    render();
+    return;
+  }
+  if(!KEY){ state.gate = "noinvite"; render(); return; }
+
+  try{
+    await refresh();
+    if(canEdit()) await migrateLocal();
+  }catch(e){
+    // No signal. Keep showing the cached copy if there is one; say so if not.
+    if(!state.expenses.length && !state.paybacks.length){
+      state.gate = "badkey";
+      state.gateMsg = "No signal, and nothing saved on this phone yet. Try again once you are back online.";
+    }
+  }
+  render();
+  renderInstall();
+}
+
+boot();
+</script>
+</body>
+</html>
