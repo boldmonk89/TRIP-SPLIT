@@ -134,7 +134,7 @@
     border-radius:100px;padding:6px 14px;font-size:12.5px;font-weight:600}
 
   /* route */
-  #map{height:300px;border-radius:12px;margin-bottom:18px;background:var(--bg);z-index:0}
+  #map{height:340px;border-radius:12px;margin-bottom:14px;background:var(--bg);z-index:0}
   .leaflet-container{font:inherit}
   .leaflet-popup-content{font-size:13px;line-height:1.45;margin:10px 12px}
   .maplegend{display:flex;flex-wrap:wrap;gap:14px;margin:-8px 0 4px;font-size:12px;color:var(--dim)}
@@ -145,6 +145,10 @@
   .dot{position:absolute;left:0;top:5px;width:16px;height:16px;border-radius:50%;
     background:var(--card);border:2px solid var(--edge)}
   .leg.big .dot{border-color:var(--brand);background:var(--brand)}
+  .leg.see .dot{width:11px;height:11px;left:3px;top:9px}
+  .leg.see .legrow{padding-left:16px}
+  .leg.see .t{font-size:14px;font-weight:500}
+  .leg.see .s{font-size:12.5px}
   .legrow{display:flex;align-items:flex-start;gap:10px;padding:6px 0 18px}
   .legrow .body{flex:1;min-width:0}
   .legrow .t{font-size:15px;font-weight:600}
@@ -163,6 +167,18 @@
   .pulse{width:8px;height:8px;border-radius:50%;background:var(--pos);flex-shrink:0;
     animation:pulse 1.8s ease-in-out infinite}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+
+  /* friends */
+  .frow{display:flex;align-items:flex-start;gap:12px;padding:15px 0;border-top:1px solid var(--line)}
+  .frow:first-child{border-top:0}
+  .fbody{flex:1;min-width:0}
+  .fname{font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .fsub{font-size:12.5px;color:var(--dim);margin-top:3px;line-height:1.4;overflow-wrap:anywhere}
+  .facts{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0}
+  .chip{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+    border-radius:100px;padding:3px 9px}
+  .chip.ok{background:#eef7ee;color:var(--pos)}
+  .chip.wait{background:var(--bg);color:var(--dim)}
 
   /* people */
   .person{border-top:1px solid var(--line)}
@@ -955,7 +971,6 @@ function viewTrip(t){
 
 // Owner-typed names end up inside onclick, so quote them properly.
 const jq = v => "'" + String(v).replace(/\\/g, "\\\\").replace(/'/g, "\\'") + "'";
-const when = ts => ts ? new Date(ts).toLocaleString("en-IN",{day:"numeric",month:"short",hour:"numeric",minute:"2-digit"}) : "";
 const ownerLink = () => location.origin + location.pathname + "?owner=" + KEY;
 
 function viewFriends(){
@@ -965,25 +980,29 @@ function viewFriends(){
 
   const rows = names.map(f=>{
     const inv = state.members.find(m=>m.name===f);
-    let status, acts;
+    let chip = "", sub, acts;
     if(!inv){
-      status = "no link yet";
-      acts = `<button class="link" onclick="inviteFriend(${jq(f)})">Create link</button>`;
+      sub  = "no link yet";
+      acts = `<button class="go" onclick="inviteFriend(${jq(f)})">Create link</button>`;
     }else if(!inv.joinedAs){
-      status = "link ready · not opened yet";
-      acts = `<button class="link" onclick="waInvite(${jq(f)},${jq(inv.token)})">Send</button>
+      chip = `<span class="chip wait">waiting</span>`;
+      sub  = "link made, not opened yet";
+      acts = `<button class="go" onclick="waInvite(${jq(f)},${jq(inv.token)})">Send</button>
               <span><button class="x" onclick="copyLink(${jq(inv.token)})">copy</button>
               <button class="x" style="padding-left:10px" onclick="uninvite(${jq(inv.token)},${jq(f)})">remove</button></span>`;
     }else{
-      status = `joined as <b>${esc(inv.joinedAs)}</b> · ${when(inv.joinedAt)}`;
-      acts = `<span style="color:var(--pos);font-size:12.5px;font-weight:600">in</span>
-              <span><button class="x" onclick="copyLink(${jq(inv.token)})">copy</button>
-              <button class="x" style="padding-left:10px" onclick="uninvite(${jq(inv.token)},${jq(f)})">remove</button></span>`;
+      chip = `<span class="chip ok">joined</span>`;
+      // Once someone is in, their link is not something you need again.
+      sub  = "as "+esc(inv.joinedAs)+" · "+dayKey(inv.joinedAt);
+      acts = `<button class="x" onclick="uninvite(${jq(inv.token)},${jq(f)})">remove</button>`;
     }
-    return `<div class="row">
+    return `<div class="frow">
       <div class="ini">${initials(f)}</div>
-      <div class="body"><div class="t">${esc(f)}</div><div class="s">${status}</div></div>
-      <div class="acts">${acts}</div>
+      <div class="fbody">
+        <div class="fname">${esc(f)}${chip}</div>
+        <div class="fsub">${sub}</div>
+      </div>
+      <div class="facts">${acts}</div>
     </div>`;
   }).join("");
 
@@ -1219,6 +1238,13 @@ function paintNav(opt){
     </div>`;
 }
 
+function fitMap(){
+  if(!lmap) return;
+  lview = null;   // forget the remembered view, we are deliberately resetting it
+  const big = STOPS.filter(x=>x.kind==="stop").map(x=>[x.lat, x.lng]);
+  lmap.fitBounds(L.latLngBounds([...(roadPts || big), ...state.locations.map(p=>[p.lat, p.lng])]), {padding:[26,26]});
+}
+
 // Tapping a person moves this map, instead of throwing them out to Google.
 function showOnMap(name){
   const p = state.locations.find(x => x.name === name);
@@ -1277,34 +1303,41 @@ function mapsFullRoute(){
 function viewRoute(){
   return `
   <section>
-    <div class="shead"><div class="kicker">The map</div></div>
+    <div class="shead">
+      <div class="kicker">The map</div>
+      <button class="link" onclick="fitMap()">Fit route</button>
+    </div>
     <div id="map"></div>
     <div class="maplegend">
       <span><i style="background:#ff385c"></i>Stops</span>
       <span><i style="background:#8a8a8a"></i>Places to see</span>
       <span><i style="background:#008a05"></i>People, live</span>
     </div>
+    <div id="livelist">${liveListHTML()}</div>
   </section>
 
   <section>
-    <div class="shead"><div class="kicker">The loop</div></div>
-    <div class="hint" style="margin:-8px 0 16px"><b>Drive</b> guides you here, with voice, while the app is open. For the driver with the screen off, use <b>Google Maps</b>.</div>
+    <div class="shead">
+      <div class="kicker">The loop</div>
+      <a class="link" href="${mapsFullRoute()}" target="_blank" rel="noopener">All in Maps</a>
+    </div>
+    <div class="hint" style="margin:-8px 0 16px"><b>Drive</b> guides you with voice while the app is open. Driving with the screen off needs Google Maps.</div>
     ${STOPS.map((st,i)=>`
-      <div class="leg ${st.kind==="stop"?"big":""}">
+      <div class="leg ${st.kind==="stop"?"big":"see"}">
         <div class="dot"></div>
         <div class="legrow">
           <div class="body">
             <div class="t">${esc(st.name)}</div>
             <div class="s">${esc(st.note)}</div>
           </div>
-          <div class="acts">
-            <button class="go" onclick="startNav(${i})">Drive</button>
-            <a class="x" href="${mapsNavTo(st)}" target="_blank" rel="noopener">Google Maps</a>
-          </div>
+          ${st.kind==="stop"
+            ? `<div class="acts">
+                 <button class="go" onclick="startNav(${i})">Drive</button>
+                 <a class="x" href="${mapsNavTo(st)}" target="_blank" rel="noopener">Maps</a>
+               </div>`
+            : `<button class="x" style="padding:2px 0 0" onclick="startNav(${i})">Drive</button>`}
         </div>
       </div>`).join("")}
-    <a class="btn" style="display:block;text-align:center;text-decoration:none"
-       href="${mapsFullRoute()}" target="_blank" rel="noopener">Open whole route in Maps</a>
   </section>
 
   <section>
@@ -1319,16 +1352,14 @@ function viewRoute(){
       </div>`).join("")}
   </section>
 
-  <section>
-    <div class="shead"><div class="kicker">Where everyone is</div></div>
-    <div id="livelist">${liveListHTML()}</div>
-  </section>`;
+`;
 }
 
 function liveListHTML(){
   const live = [...state.locations].sort((a,b)=>b.updatedAt-a.updatedAt);
   const me   = myName();
   return `
+    <div class="shead" style="margin:18px 0 2px"><div class="kicker" style="font-size:15px">Where everyone is</div></div>
     ${!me ? ""
       : state.sharing
         ? `<div class="live"><span class="pulse"></span>Yours is on · only this group sees it
