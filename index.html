@@ -119,6 +119,32 @@
   .allsquare{padding:34px 0;text-align:center}
   .allsquare b{display:block;font-size:17px;font-weight:700;margin-bottom:4px}
 
+  /* route */
+  .leg{position:relative;padding:0 0 0 28px}
+  .leg::before{content:"";position:absolute;left:7px;top:6px;bottom:-6px;width:2px;background:var(--line)}
+  .leg:last-child::before{display:none}
+  .dot{position:absolute;left:0;top:5px;width:16px;height:16px;border-radius:50%;
+    background:var(--card);border:2px solid var(--edge)}
+  .leg.big .dot{border-color:var(--brand);background:var(--brand)}
+  .legrow{display:flex;align-items:flex-start;gap:10px;padding:6px 0 18px}
+  .legrow .body{flex:1;min-width:0}
+  .legrow .t{font-size:15px;font-weight:600}
+  .leg.big .t{font-size:16px;font-weight:700;letter-spacing:-.02em}
+  .legrow .s{font-size:13px;color:var(--dim);margin-top:1px}
+  .go{flex-shrink:0;border:1px solid var(--edge);background:var(--card);border-radius:100px;
+    padding:6px 13px;font-size:12.5px;font-weight:600;color:var(--ink)}
+  .road{border-top:1px solid var(--line);padding:14px 0}
+  .road:first-child{border-top:0;padding-top:0}
+  .road .t{font-size:14.5px;font-weight:600}
+  .road .s{font-size:12.5px;color:var(--dim);margin-top:2px}
+  .plaza{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .plaza span{font-size:11.5px;font-weight:600;color:var(--dim);background:var(--bg);
+    border-radius:100px;padding:4px 10px}
+  .live{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--dim);margin-top:2px}
+  .pulse{width:8px;height:8px;border-radius:50%;background:var(--pos);flex-shrink:0;
+    animation:pulse 1.8s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+
   /* people */
   .person{border-top:1px solid var(--line)}
   .person:first-child{border-top:0}
@@ -169,6 +195,10 @@
     <svg viewBox="0 0 24 24"><path d="M3 8h14l-3-3M21 16H7l3 3"/></svg>
     Split
   </button>
+  <button data-tab="route">
+    <svg viewBox="0 0 24 24"><path d="M12 21s7-6.4 7-11a7 7 0 1 0-14 0c0 4.6 7 11 7 11z"/><circle cx="12" cy="10" r="2.6"/></svg>
+    Route
+  </button>
   <button data-tab="trip">
     <svg viewBox="0 0 24 24"><path d="M5 17H3v-6l2-5h11l2 5v6h-2"/><circle cx="7.5" cy="17" r="2"/><circle cx="16.5" cy="17" r="2"/></svg>
     Trip
@@ -203,6 +233,38 @@ async function rpc(fn, args){
 const CAPITAL = { Archit:12000, Satwik:10000, Kripansh:12000, Tejas:12000, Akshat:12000 };
 
 const CATS = { car:"Car", fuel:"Fuel", toll:"Toll", stay:"Stay", food:"Food", activity:"Activity", misc:"Misc" };
+
+// The loop, in the order we actually drive it. Coordinates are what the map
+// links are built from, so they have to be the real place, not the town centre
+// where that differs (Char Dukan is up in Landour, not on Mall Road).
+const STOPS = [
+  { name:"Samaypur Badli",  note:"Start",                       lat:28.7387, lng:77.1385, kind:"stop" },
+  { name:"Rishikesh",       note:"Bungee jump",                 lat:30.0869, lng:78.2676, kind:"stop" },
+  { name:"Mussoorie",       note:"Queen of the hills",          lat:30.4599, lng:78.0664, kind:"stop" },
+  { name:"Lal Tibba",       note:"Highest point, sunrise",      lat:30.4614, lng:78.1000, kind:"see"  },
+  { name:"Gun Hill",        note:"Ropeway viewpoint",           lat:30.4570, lng:78.0700, kind:"see"  },
+  { name:"Mall Road",       note:"Shopping, evening walk",      lat:30.4562, lng:78.0700, kind:"see"  },
+  { name:"Kempty Falls",    note:"Waterfall",                   lat:30.4833, lng:78.0167, kind:"see"  },
+  { name:"Landour",         note:"Quiet cantonment",            lat:30.4560, lng:78.1050, kind:"stop" },
+  { name:"Char Dukan",      note:"Maggi and pancakes",          lat:30.4577, lng:78.1093, kind:"see"  },
+  { name:"Dhanaulti",       note:"Pine forests",                lat:30.4180, lng:78.2400, kind:"stop" },
+  { name:"Eco Park",        note:"Amber and Dhara gardens",     lat:30.4197, lng:78.2372, kind:"see"  },
+  { name:"Surkanda Devi",   note:"Temple trek, 2750m",          lat:30.4053, lng:78.2836, kind:"see"  },
+  { name:"Samaypur Badli",  note:"Back home",                   lat:28.7387, lng:77.1385, kind:"stop" },
+];
+
+// What the highway actually costs and what it is called, going up. FASTag
+// plazas on NH-334/NH-7 via Meerut and Muzaffarnagar.
+const ROADS = [
+  { leg:"Delhi → Rishikesh", via:"NH-334 via Meerut, then NH-58/NH-7",
+    tolls:["Bhojpur (Meerut)","Sikri Khurd","Bhagwanpur","Manoharpur"], note:"~230km · 5–6 hrs" },
+  { leg:"Rishikesh → Mussoorie", via:"NH-7 to Dehradun, then hill road",
+    tolls:["Dehradun bypass"], note:"~80km · 2.5 hrs, last 35km climb" },
+  { leg:"Mussoorie ↔ Landour ↔ Dhanaulti", via:"Local hill roads",
+    tolls:[], note:"~40km · petrol, steep" },
+  { leg:"Dhanaulti → Delhi", via:"Down to Dehradun, NH-7 → NH-334",
+    tolls:["Dehradun bypass","Manoharpur","Bhagwanpur","Sikri Khurd","Bhojpur (Meerut)"], note:"~310km · 7–8 hrs" },
+];
 
 // The one genuinely fixed cost. Everything else gets decided on the road and
 // logged as it is actually paid.
@@ -242,7 +304,8 @@ let state = {
   mode:"equal", draft:{},   // draft holds the per-person amounts being typed
 
   // who is looking: "owner" can change things, "viewer" can only read
-  role:null, me:null, members:[],
+  role:null, me:null, members:[], locations:[],
+  sharing:false, geoWatch:null,
   gate:"loading",           // null once we have a session; otherwise which screen to show
   gateMsg:"", joinToken:null, showOwnerLink:false,
 };
@@ -275,6 +338,7 @@ function applyLedger(d, cache){
   state.expenses = d.expenses || [];
   state.paybacks = d.paybacks || [];
   state.members  = d.members  || [];
+  state.locations= d.locations|| [];
   state.plan     = {...PLAN, rate:CAR_RATE, days:CAR_DAYS, ...(d.plan || {})};
   state.gate     = null;
   if(cache !== false) ls(CK, JSON.stringify(d));
@@ -402,7 +466,12 @@ function calc(){
 }
 
 // ---- actions ----
-function setTab(t){ state.tab=t; state.openPerson=null; render(); renderInstall(); }
+function setTab(t){
+  state.tab=t; state.openPerson=null;
+  if(t==="route"){ startRoutePoll(); refreshQuiet().then(()=>{ if(state.tab==="route") render(); }); }
+  else stopRoutePoll();
+  render(); renderInstall();
+}
 function setCat(k){ state.cat=k; render(); }
 function togglePerson(f){ state.openPerson = state.openPerson===f ? null : f; render(); }
 function togglePlan(){ state.showPlan=!state.showPlan; render(); }
@@ -475,6 +544,67 @@ function waInvite(name, token){
     +"\n\nOpen it, type your name, and you can see everything — who paid what and who has to pay who. Live.";
   window.open("https://wa.me/?text="+encodeURIComponent(msg), "_blank");
 }
+
+// ---- live location ----
+// Opt-in and opt-out both hit the server immediately, so switching it off is
+// not just a local flag - the row is deleted and nobody can see you any more.
+const myName = () => canEdit() ? OWNER : (state.me || "");
+
+function toggleShare(){
+  if(state.sharing) return stopShare();
+  if(!navigator.geolocation){ alert("This phone cannot share location."); return; }
+  state.geoWatch = navigator.geolocation.watchPosition(
+    async pos => {
+      state.sharing = true;
+      const {latitude:lat, longitude:lng} = pos.coords;
+      try{
+        await rpc("share_location", {p_token:KEY, p_name:myName(), p_lat:lat, p_lng:lng});
+        // Show our own pin straight away rather than waiting for the next poll.
+        state.locations = [...state.locations.filter(p=>p.name!==myName()),
+                           {name:myName(), lat, lng, updatedAt:Date.now()}];
+      }catch(e){}
+      render();
+    },
+    err => {
+      state.sharing = false;
+      if(state.geoWatch!==null){ navigator.geolocation.clearWatch(state.geoWatch); state.geoWatch=null; }
+      alert(err.code===1 ? "Location permission was refused." : "Could not get your location.");
+      render();
+    },
+    { enableHighAccuracy:true, maximumAge:15000, timeout:20000 }
+  );
+}
+
+async function stopShare(){
+  if(state.geoWatch!==null){ navigator.geolocation.clearWatch(state.geoWatch); state.geoWatch=null; }
+  state.sharing = false;
+  try{ await rpc("stop_location", {p_token:KEY, p_name:myName()}); }catch(e){}
+  await refreshQuiet();
+  render();
+}
+
+// A plain reload that leaves the screen alone if the network is down.
+async function refreshQuiet(){
+  try{ const d = await rpc("get_ledger", {p_token:KEY}); if(d.role!=="none") applyLedger(d); }
+  catch(e){}
+}
+
+// Others' pins and the "x min ago" labels only move if something refetches.
+// Poll while the Route tab is open, and stop the moment it is not.
+let routePoll = null;
+function startRoutePoll(){
+  if(routePoll !== null) return;
+  routePoll = setInterval(async () => { await refreshQuiet(); if(state.tab==="route") render(); }, 20000);
+}
+function stopRoutePoll(){
+  if(routePoll === null) return;
+  clearInterval(routePoll); routePoll = null;
+}
+
+const ago = ms => {
+  const m = Math.round((Date.now()-ms)/60000);
+  return m<1 ? "just now" : m<60 ? m+" min ago" : Math.round(m/60)+" hr ago";
+};
 
 // ---- joining ----
 async function doJoin(){
@@ -846,6 +976,73 @@ function viewFriends(){
   </section>`;
 }
 
+const mapsPin   = st => "https://www.google.com/maps/search/?api=1&query="+st.lat+","+st.lng;
+const mapsNavTo = st => "https://www.google.com/maps/dir/?api=1&destination="+st.lat+","+st.lng+"&travelmode=driving";
+// One link for the whole loop: start, every major stop as a waypoint, end.
+function mapsFullRoute(){
+  const big = STOPS.filter(x=>x.kind==="stop");
+  const pt  = x => x.lat+","+x.lng;
+  return "https://www.google.com/maps/dir/?api=1"
+    + "&origin="      + pt(big[0])
+    + "&destination=" + pt(big[big.length-1])
+    + "&waypoints="   + big.slice(1,-1).map(pt).join("|")
+    + "&travelmode=driving";
+}
+
+function viewRoute(){
+  const live = [...state.locations].sort((a,b)=>b.updatedAt-a.updatedAt);
+  const me   = myName();
+
+  return `
+  <section>
+    <div class="shead"><div class="kicker">The loop</div></div>
+    ${STOPS.map(st=>`
+      <div class="leg ${st.kind==="stop"?"big":""}">
+        <div class="dot"></div>
+        <div class="legrow">
+          <div class="body">
+            <div class="t">${esc(st.name)}</div>
+            <div class="s">${esc(st.note)}</div>
+          </div>
+          <a class="go" href="${mapsNavTo(st)}" target="_blank" rel="noopener">Go</a>
+        </div>
+      </div>`).join("")}
+    <a class="btn" style="display:block;text-align:center;text-decoration:none"
+       href="${mapsFullRoute()}" target="_blank" rel="noopener">Open whole route in Maps</a>
+  </section>
+
+  <section>
+    <div class="shead"><div class="kicker">Highways and tolls</div></div>
+    ${ROADS.map(r=>`
+      <div class="road">
+        <div class="t">${esc(r.leg)}</div>
+        <div class="s">${esc(r.via)} · ${esc(r.note)}</div>
+        ${r.tolls.length
+          ? `<div class="plaza">${r.tolls.map(p=>`<span>${esc(p)}</span>`).join("")}</div>`
+          : `<div class="s" style="margin-top:6px">No toll on this stretch</div>`}
+      </div>`).join("")}
+  </section>
+
+  <section>
+    <div class="shead">
+      <div class="kicker">Where everyone is</div>
+      ${me?`<button class="link" onclick="toggleShare()">${state.sharing?"Stop sharing":"Share mine"}</button>`:""}
+    </div>
+    ${state.sharing?`<div class="live"><span class="pulse"></span>Your location is on. Only this group can see it.</div>`:""}
+    ${live.length===0
+      ? `<div class="empty">Nobody is sharing right now.</div>`
+      : live.map(p=>`
+        <div class="row">
+          <div class="ini">${initials(p.name)}</div>
+          <div class="body">
+            <div class="t">${esc(p.name)}${p.name===me?" (you)":""}</div>
+            <div class="s">${ago(p.updatedAt)}</div>
+          </div>
+          <a class="go" href="${mapsPin(p)}" target="_blank" rel="noopener">Map</a>
+        </div>`).join("")}
+  </section>`;
+}
+
 function gateHTML(){
   if(!state.gate) return null;
   if(state.gate==="loading") return `<section><div class="empty">Opening…</div></section>`;
@@ -885,7 +1082,10 @@ function render(){
   ft.textContent = "";
   document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on", b.dataset.tab===state.tab));
   document.getElementById("view").innerHTML =
-    state.tab==="log" ? viewLog(t) : state.tab==="trip" ? viewTrip(t) : viewSettle(t);
+    state.tab==="log"   ? viewLog(t)
+  : state.tab==="trip"  ? viewTrip(t)
+  : state.tab==="route" ? viewRoute()
+  : viewSettle(t);
 }
 document.querySelectorAll("nav button").forEach(b=>b.addEventListener("click",()=>setTab(b.dataset.tab)));
 
