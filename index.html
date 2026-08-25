@@ -16,9 +16,16 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
   :root{
-    --bg:#f7f7f7; --card:#fff; --ink:#222222; --dim:#717171; --faint:#b0b0b0;
-    --line:#ebebeb; --edge:#dddddd; --brand:#ff385c; --pos:#008a05; --neg:#c13515;
-    --sh:0 1px 2px rgba(0,0,0,.05), 0 4px 14px rgba(0,0,0,.05);
+    --bg:#f8fafc; --card:#fff; --ink:#0f172a; --dim:#475569; --faint:#94a3b8;
+    --line:#e2e8f0; --edge:#cbd5e1;
+    --brand:#047857; --pos:#047857; --neg:#c81e1e;      /* all >= 4.83:1 on white */
+    --tint-pos:#ecfdf5; --tint-neg:#fef2f2;
+    --sh:none;
+    --t:170ms cubic-bezier(.4,0,.2,1);
+  }
+  @media (prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;
+      transition-duration:.01ms !important;scroll-behavior:auto !important}
   }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
   html{-webkit-text-size-adjust:100%}
@@ -45,8 +52,8 @@
   header h1{font-size:26px;font-weight:700;letter-spacing:-.035em}
   .trip{font-size:14px;color:var(--dim);margin-top:1px}
   .status{margin-top:15px;display:inline-flex;align-items:center;gap:7px;border-radius:100px;
-    padding:8px 15px;font-size:13.5px;font-weight:600;background:#fff0f3;color:var(--brand)}
-  .status.ok{background:#eef7ee;color:var(--pos)}
+    padding:8px 15px;font-size:13.5px;font-weight:600;background:var(--tint-neg);color:var(--neg)}
+  .status.ok{background:var(--tint-pos);color:var(--pos)}
   .status.idle{background:var(--bg);color:var(--dim)}
 
   /* bottom tab bar */
@@ -60,7 +67,8 @@
 
   /* cards */
   main{padding-top:16px}
-  section{background:var(--card);border-radius:16px;padding:20px;margin-bottom:16px;box-shadow:var(--sh)}
+  section{background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:20px;margin-bottom:16px}
   .shead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
   .kicker{font-size:17px;font-weight:700;letter-spacing:-.02em;color:var(--ink)}
   .hint{font-size:13.5px;color:var(--dim);line-height:1.5}
@@ -86,7 +94,10 @@
   /* buttons */
   .btn{width:100%;border:0;border-radius:12px;background:var(--brand);color:#fff;padding:15px;
     font-size:16px;font-weight:600;margin-top:20px}
+  .btn{transition:background var(--t),filter var(--t)}
   .btn:active{filter:brightness(.93)}
+  .opt,.go,.x,.link,nav button{transition:color var(--t),background var(--t),border-color var(--t)}
+  .row,.frow,.legrow{transition:background var(--t)}
   .btn.line{background:var(--card);color:var(--ink);border:1px solid var(--ink);font-size:14.5px;padding:12px}
   .link{border:0;background:none;padding:7px 0;font-size:13.5px;font-weight:600;color:var(--ink);
     text-decoration:underline;text-underline-offset:3px;min-height:24px}
@@ -126,8 +137,7 @@
   .allsquare b{display:block;font-size:17px;font-weight:700;margin-bottom:4px}
 
   /* navigation */
-  .navbar{background:var(--ink);color:#fff;border-radius:16px;padding:17px 19px;margin-bottom:16px;
-    box-shadow:var(--sh)}
+  .navbar{background:var(--ink);color:#fff;border-radius:16px;padding:17px 19px;margin-bottom:16px}
   .navtop{display:flex;align-items:flex-start;gap:14px}
   .navtop .dist{font-size:27px;font-weight:700;letter-spacing:-.03em;line-height:1.1;flex-shrink:0}
   .navtop .big{font-size:17px;font-weight:600;letter-spacing:-.015em}
@@ -181,7 +191,7 @@
   .facts{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0}
   .chip{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
     border-radius:100px;padding:3px 9px}
-  .chip.ok{background:#eef7ee;color:var(--pos)}
+  .chip.ok{background:var(--tint-pos);color:var(--pos)}
   .chip.wait{background:var(--bg);color:var(--dim)}
 
   /* people */
@@ -200,7 +210,7 @@
 
   .note{background:var(--bg);border-radius:12px;padding:14px 15px;font-size:13.5px;color:var(--dim);line-height:1.55}
   .note b{color:var(--ink);font-weight:600}
-  .warn{background:#fff0f3;color:var(--neg)}
+  .warn{background:var(--tint-neg);color:var(--neg)}
   .warn b{color:var(--neg)}
   footer{padding:4px 0 8px;font-size:12.5px;color:var(--faint);text-align:center}
   .role{margin-top:9px;font-size:12.5px;color:var(--dim)}
@@ -1047,6 +1057,8 @@ async function loadRoadLine(){
 
 // render() replaces the whole tab, which throws the map away with it. Keep the
 // last centre and zoom so a background refresh does not yank the view back.
+// Leaflet takes colours as strings, so mirror the two tokens it needs.
+const BRAND = "#047857", LIVE = "#0d9488";
 let lmap = null, lview = null, peopleLayer = null, pins = {};
 
 function paintPeople(){
@@ -1055,7 +1067,7 @@ function paintPeople(){
   pins = {};
   for(const p of state.locations){
     pins[p.name] = L.circleMarker([p.lat, p.lng],
-      {radius:9, color:"#fff", weight:3, fillColor:"#008a05", fillOpacity:1})
+      {radius:9, color:"#fff", weight:3, fillColor:LIVE, fillOpacity:1})
       .addTo(peopleLayer).bindPopup("<b>"+esc(p.name)+"</b><br>"+ago(p.updatedAt));
   }
 }
@@ -1267,13 +1279,13 @@ function mountMap(){
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom:18}).addTo(lmap);
 
   const big = STOPS.filter(x=>x.kind==="stop").map(x=>[x.lat, x.lng]);
-  L.polyline(roadPts || big, {color:"#ff385c", weight:4, opacity:.75}).addTo(lmap);
+  L.polyline(roadPts || big, {color:BRAND, weight:4, opacity:.8}).addTo(lmap);
   loadRoadLine();
 
   for(const st of STOPS){
     L.circleMarker([st.lat, st.lng], {
       radius: st.kind==="stop" ? 7 : 5, color:"#fff", weight:2,
-      fillColor: st.kind==="stop" ? "#ff385c" : "#8a8a8a", fillOpacity:1,
+      fillColor: st.kind==="stop" ? BRAND : "#64748b", fillOpacity:1,
     }).addTo(lmap).bindPopup("<b>"+esc(st.name)+"</b><br>"+esc(st.note));
   }
 
@@ -1313,9 +1325,9 @@ function viewRoute(){
     </div>
     <div id="map"></div>
     <div class="maplegend">
-      <span><i style="background:#ff385c"></i>Stops</span>
-      <span><i style="background:#8a8a8a"></i>Places to see</span>
-      <span><i style="background:#008a05"></i>People, live</span>
+      <span><i style="background:${BRAND}"></i>Stops</span>
+      <span><i style="background:#64748b"></i>Places to see</span>
+      <span><i style="background:${LIVE}"></i>People, live</span>
     </div>
     <div id="livelist">${liveListHTML()}</div>
   </section>
