@@ -29,6 +29,10 @@
     padding-bottom:calc(78px + env(safe-area-inset-bottom));
   }
   button{font-family:inherit;color:inherit;cursor:pointer}
+  /* One ring for every control, so tabbing never loses the cursor. */
+  a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{
+    outline:2px solid var(--ink);outline-offset:3px;border-radius:6px}
+  nav button:focus-visible{outline-offset:-4px}
   input,select{font-family:inherit;color:inherit}
   input[type=number]{-moz-appearance:textfield}
   input[type=number]::-webkit-inner-spin-button,
@@ -72,7 +76,7 @@
     background-position:calc(100% - 19px) 24px,calc(100% - 14px) 24px;background-size:5px 5px;background-repeat:no-repeat}
   .money{display:flex;align-items:center;border:1px solid var(--edge);border-radius:12px;background:var(--card);padding-left:14px}
   .money:focus-within{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink)}
-  .money span{font-size:15px;color:var(--faint);font-weight:600}
+  .money span{font-size:15px;color:var(--dim);font-weight:600}
   .money input{flex:1;min-width:0;border:0;background:none;font-size:16px;font-weight:600;
     font-variant-numeric:tabular-nums;padding:14px 14px 14px 5px}
   .money input:focus{outline:none}
@@ -84,8 +88,8 @@
     font-size:16px;font-weight:600;margin-top:20px}
   .btn:active{filter:brightness(.93)}
   .btn.line{background:var(--card);color:var(--ink);border:1px solid var(--ink);font-size:14.5px;padding:12px}
-  .link{border:0;background:none;padding:0;font-size:13.5px;font-weight:600;color:var(--ink);
-    text-decoration:underline;text-underline-offset:3px}
+  .link{border:0;background:none;padding:7px 0;font-size:13.5px;font-weight:600;color:var(--ink);
+    text-decoration:underline;text-underline-offset:3px;min-height:24px}
   .opts{display:flex;flex-wrap:wrap;gap:8px}
   .opt{border:1px solid var(--edge);background:var(--card);border-radius:100px;padding:9px 16px;
     font-size:14px;font-weight:600;color:var(--ink)}
@@ -103,8 +107,8 @@
     padding:5px 11px;flex-shrink:0}
   .ini{width:36px;height:36px;flex-shrink:0;border-radius:50%;background:var(--ink);color:#fff;
     display:grid;place-items:center;font-size:13px;font-weight:600}
-  .x{border:0;background:none;padding:3px 0 0;font-size:12.5px;color:var(--dim);
-    text-decoration:underline;text-underline-offset:2px}
+  .x{border:0;background:none;padding:7px 2px;font-size:12.5px;color:var(--dim);
+    text-decoration:underline;text-underline-offset:2px;min-height:24px}
   .empty{padding:30px 0;font-size:14px;color:var(--dim);text-align:center}
   .daybar{display:flex;align-items:baseline;justify-content:space-between;gap:10px;
     padding:20px 0 4px;border-top:1px solid var(--line);margin-top:6px}
@@ -748,11 +752,11 @@ function viewLog(t){
     <div class="opts" style="margin-bottom:16px">
       ${Object.entries(CATS).map(([k,l])=>`<button class="opt ${state.cat===k?"on":""}" onclick="setCat('${k}')">${l}</button>`).join("")}
     </div>
-    <label class="lbl">What was it</label>
+    <label class="lbl" for="f-desc">What was it</label>
     <input class="f" id="f-desc">
     <div style="margin-top:12px;max-width:60%">
-      <label class="lbl">Paid by</label>
-      <select class="f" onchange="state.payer=this.value;render()">
+      <label class="lbl" for="f-payer">Paid by</label>
+      <select class="f" id="f-payer" onchange="state.payer=this.value;render()">
         ${FRIENDS.map(f=>`<option ${state.payer===f?"selected":""}>${f}</option>`).join("")}
       </select>
     </div>
@@ -764,16 +768,16 @@ function viewLog(t){
 
     ${state.mode==="equal" ? `
       <div style="margin-top:14px;max-width:60%">
-        <label class="lbl">Total amount</label>
+        <label class="lbl" for="f-amt">Total amount</label>
         <div class="money"><span>₹</span><input type="number" inputmode="numeric" id="f-amt" placeholder="0"></div>
       </div>
     ` : `
       ${FRIENDS.map(f=>`
         <div class="row" style="padding:9px 0">
           <div class="ini">${initials(f)}</div>
-          <div class="body"><div class="t">${f}${f===state.payer?` <span style="color:var(--faint);font-weight:400">· paying</span>`:""}</div></div>
+          <div class="body"><div class="t">${f}${f===state.payer?` <span style="color:var(--dim);font-weight:400">· paying</span>`:""}</div></div>
           <div class="money" style="width:132px"><span>₹</span><input type="number" inputmode="numeric"
-            value="${state.draft[f]??""}" placeholder="0" oninput="setDraft('${f}',this.value)"></div>
+            aria-label="What ${esc(f)} ordered" value="${state.draft[f]??""}" placeholder="0" oninput="setDraft('${f}',this.value)"></div>
         </div>`).join("")}
       <div class="row" style="border-top:1px solid var(--edge)">
         <div class="body"><div class="t">Bill total</div>
@@ -877,7 +881,7 @@ function viewSettle(t){
           ${used.length===0
             ? `<div class="hint">Nothing so far.</div>`
             : used.map(x=>`<div class="drow"><span>${esc(x.e.desc)}
-                 <span style="color:var(--faint)">· ${CATS[x.e.cat].toLowerCase()} · ${x.e.payer===f?"he paid":x.e.payer+" paid"}</span></span>
+                 <span style="color:var(--dim)">· ${CATS[x.e.cat].toLowerCase()} · ${x.e.payer===f?"he paid":x.e.payer+" paid"}</span></span>
                  <span class="amt">${rupee(x.part)}</span></div>`).join("")
               + `<div class="drow" style="border-top:1px solid var(--line);margin-top:5px;padding-top:9px">
                    <span style="color:var(--dim)">His share</span><span class="amt">${rupee(t.share[f])}</span></div>`}
@@ -903,7 +907,7 @@ function viewSettle(t){
     ${done.map(p=>`<div class="settled">
       <span>${p.from} → ${p.to}</span>
       <span class="amt">${rupee(p.amount)}</span>
-      ${canEdit()?`<button class="x" style="padding:0 0 0 12px" onclick="delPayback('${p.id}')">undo</button>`:""}
+      ${canEdit()?`<button class="x" style="margin-left:12px" onclick="delPayback('${p.id}')">undo</button>`:""}
     </div>`).join("")}
   </section>`:""}`;
 }
@@ -920,41 +924,41 @@ function viewTrip(t){
     <div class="duo" style="margin-top:18px">
       <div><label class="lbl">Car per day</label>
         <div class="money"><span>₹</span><input type="number" inputmode="numeric" value="${state.plan.rate}"
-          oninput="setPlan('rate',this.value)" onblur="fixPlan('rate',this.value)"></div></div>
+          aria-label="Car hire per day, rupees" oninput="setPlan('rate',this.value)" onblur="fixPlan('rate',this.value)"></div></div>
       <div><label class="lbl">Days</label>
         <div class="money"><span>×</span><input type="number" inputmode="numeric" value="${state.plan.days}"
-          oninput="setPlan('days',this.value)" onblur="fixPlan('days',this.value)"></div></div>
+          aria-label="Number of days" oninput="setPlan('days',this.value)" onblur="fixPlan('days',this.value)"></div></div>
     </div>
     <div class="kicker" style="margin:20px 0 10px">Highway on CNG</div>
     <div class="duo">
       <div><label class="lbl">km</label><input class="f num" type="number" inputmode="numeric" value="${state.plan.cngKm}"
-        oninput="setPlan('cngKm',this.value)" onblur="fixPlan('cngKm',this.value)"></div>
+        aria-label="Highway kilometres on CNG" oninput="setPlan('cngKm',this.value)" onblur="fixPlan('cngKm',this.value)"></div>
       <div><label class="lbl">km per kg</label><input class="f num" type="number" inputmode="decimal" value="${state.plan.cngEff}"
-        oninput="setPlan('cngEff',this.value)" onblur="fixPlan('cngEff',this.value)"></div>
+        aria-label="CNG kilometres per kg" oninput="setPlan('cngEff',this.value)" onblur="fixPlan('cngEff',this.value)"></div>
       <div><label class="lbl">₹ per kg</label>
         <div class="money"><span>₹</span><input type="number" inputmode="decimal" value="${state.plan.cngRate}"
-          oninput="setPlan('cngRate',this.value)" onblur="fixPlan('cngRate',this.value)"></div></div>
+          aria-label="CNG rupees per kg" oninput="setPlan('cngRate',this.value)" onblur="fixPlan('cngRate',this.value)"></div></div>
     </div>
     <div class="kicker" style="margin:18px 0 10px">Hills on petrol</div>
     <div class="duo">
       <div><label class="lbl">km</label><input class="f num" type="number" inputmode="numeric" value="${state.plan.petKm}"
-        oninput="setPlan('petKm',this.value)" onblur="fixPlan('petKm',this.value)"></div>
+        aria-label="Hill kilometres on petrol" oninput="setPlan('petKm',this.value)" onblur="fixPlan('petKm',this.value)"></div>
       <div><label class="lbl">km per litre</label><input class="f num" type="number" inputmode="decimal" value="${state.plan.petEff}"
-        oninput="setPlan('petEff',this.value)" onblur="fixPlan('petEff',this.value)"></div>
+        aria-label="Petrol kilometres per litre" oninput="setPlan('petEff',this.value)" onblur="fixPlan('petEff',this.value)"></div>
       <div><label class="lbl">₹ per litre</label>
         <div class="money"><span>₹</span><input type="number" inputmode="decimal" value="${state.plan.petRate}"
-          oninput="setPlan('petRate',this.value)" onblur="fixPlan('petRate',this.value)"></div></div>
+          aria-label="Petrol rupees per litre" oninput="setPlan('petRate',this.value)" onblur="fixPlan('petRate',this.value)"></div></div>
     </div>
     <div class="duo" style="margin-top:18px">
       <div>
         <label class="lbl">Buffer km</label>
         <input class="f num" type="number" inputmode="numeric" value="${state.plan.buffer}"
-          oninput="setPlan('buffer',this.value)" onblur="fixPlan('buffer',this.value)">
+          aria-label="Buffer kilometres" oninput="setPlan('buffer',this.value)" onblur="fixPlan('buffer',this.value)">
       </div>
       <div>
         <label class="lbl">Toll, both ways</label>
         <div class="money"><span>₹</span><input type="number" inputmode="numeric" value="${state.plan.toll}"
-          oninput="setPlan('toll',this.value)" onblur="fixPlan('toll',this.value)"></div>
+          aria-label="Toll both ways, rupees" oninput="setPlan('toll',this.value)" onblur="fixPlan('toll',this.value)"></div>
       </div>
     </div>
     <div class="note" style="margin-top:16px" id="planNote">${planNoteHTML()}</div>
@@ -989,7 +993,7 @@ function viewFriends(){
       sub  = "link made, not opened yet";
       acts = `<button class="go" onclick="waInvite(${jq(f)},${jq(inv.token)})">Send</button>
               <span><button class="x" onclick="copyLink(${jq(inv.token)})">copy</button>
-              <button class="x" style="padding-left:10px" onclick="uninvite(${jq(inv.token)},${jq(f)})">remove</button></span>`;
+              <button class="x" style="margin-left:10px" onclick="uninvite(${jq(inv.token)},${jq(f)})">remove</button></span>`;
     }else{
       chip = `<span class="chip ok">joined</span>`;
       // Once someone is in, their link is not something you need again.
@@ -1335,7 +1339,7 @@ function viewRoute(){
                  <button class="go" onclick="startNav(${i})">Drive</button>
                  <a class="x" href="${mapsNavTo(st)}" target="_blank" rel="noopener">Maps</a>
                </div>`
-            : `<button class="x" style="padding:2px 0 0" onclick="startNav(${i})">Drive</button>`}
+            : `<button class="x" onclick="startNav(${i})">Drive</button>`}
         </div>
       </div>`).join("")}
   </section>
@@ -1363,9 +1367,9 @@ function liveListHTML(){
     ${!me ? ""
       : state.sharing
         ? `<div class="live"><span class="pulse"></span>Yours is on · only this group sees it
-             <button class="x" style="padding:0 0 0 4px" onclick="stopShare()">turn off</button></div>`
+             <button class="x" style="margin-left:4px" onclick="stopShare()">turn off</button></div>`
         : `<div class="live">Yours is off
-             <button class="x" style="padding:0 0 0 4px" onclick="startShare()">turn on</button></div>`}
+             <button class="x" style="margin-left:4px" onclick="startShare()">turn on</button></div>`}
     ${live.length===0
       ? `<div class="empty">Nobody is sharing right now.</div>`
       : live.map(p=>`
@@ -1385,7 +1389,7 @@ function gateHTML(){
   if(state.gate==="join") return `
   <section>
     <div class="shead"><div class="kicker">You have been invited</div></div>
-    <label class="lbl">Your name</label>
+    <label class="lbl" for="j-name">Your name</label>
     <input class="f" id="j-name" autocomplete="name" placeholder="Type your name">
     ${state.gateMsg?`<div class="hint" style="margin-top:9px;color:var(--neg)">${esc(state.gateMsg)}</div>`:""}
     <button class="btn" onclick="doJoin()">Join</button>
