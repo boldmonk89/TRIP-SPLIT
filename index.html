@@ -682,6 +682,11 @@ function viewSettle(t){
     ${FRIENDS.map(f=>{
       const bal=t.net[f], pos=bal>=0, open=state.openPerson===f;
       const mine=state.expenses.filter(e=>e.payer===f);
+      // Every bill he has a part in, and how much of it is his. This is what
+      // his share is actually made of, so "still owes" has something behind it.
+      const used=state.expenses
+        .map(e=>({e, part:Math.round(num(sharesOf(e)[f]))}))
+        .filter(x=>x.part>0);
       return `<div class="person">
         <button class="phead" onclick="togglePerson('${f}')">
           <div class="ini">${initials(f)}</div>
@@ -693,7 +698,16 @@ function viewSettle(t){
           <div class="caret">${open?"▲":"▼"}</div>
         </button>
         ${open?`<div class="detail">
-          <div class="kicker" style="margin-bottom:8px">Paid for</div>
+          <div class="kicker" style="margin-bottom:8px">His share is for</div>
+          ${used.length===0
+            ? `<div class="hint">Nothing so far.</div>`
+            : used.map(x=>`<div class="drow"><span>${esc(x.e.desc)}
+                 <span style="color:var(--faint)">· ${CATS[x.e.cat].toLowerCase()} · ${x.e.payer===f?"he paid":x.e.payer+" paid"}</span></span>
+                 <span class="amt">${rupee(x.part)}</span></div>`).join("")
+              + `<div class="drow" style="border-top:1px solid var(--line);margin-top:5px;padding-top:9px">
+                   <span style="color:var(--dim)">His share</span><span class="amt">${rupee(t.share[f])}</span></div>`}
+
+          <div class="kicker" style="margin:16px 0 8px">He paid for</div>
           ${mine.length===0
             ? `<div class="hint">Hasn't paid for anything yet.</div>`
             : mine.map(e=>`<div class="drow"><span>${esc(e.desc)}</span><span class="amt">${rupee(amtOf(e))}</span></div>`).join("")
