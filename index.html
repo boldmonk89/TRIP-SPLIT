@@ -7,7 +7,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Trip Split">
-<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' fill='%23101010'/%3E%3Cpath d='M56 140L124 40' stroke='%23fff' stroke-width='13'/%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
 <title>Trip Split</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -407,6 +409,7 @@ let state = {
   plan: {...PLAN, rate:CAR_RATE, days:CAR_DAYS},
   tab:"log", cat:"food", payer:FRIENDS[0], openPerson:null, showPlan:false,
   mode:"equal", draft:{},   // draft holds the per-person amounts being typed
+  desc:"", amt:"",          // kept here so a re-render cannot throw them away
 
   // who is looking: "owner" can change things, "viewer" can only read
   role:null, me:null, members:[], locations:[],
@@ -428,7 +431,7 @@ const draftTotal = () => FRIENDS.reduce((s,f)=>s+Math.round(num(state.draft[f]))
 // token for everyone else. The server decides which it is; the app never does.
 const KK = "tripsplit5:key", CK = "tripsplit5:cache", JK = "tripsplit5:join",
       MK = "tripsplit5:migrated", IK = "tripsplit5:installed",
-      SHK = "tripsplit5:noshare", RK = "tripsplit5:roadline2";
+      SHK = "tripsplit5:noshare", RK = "tripsplit5:roadline2", TK = "tripsplit5:tab";
 let KEY = null;
 
 function ls(k, v){
@@ -655,6 +658,7 @@ function calc(){
 // ---- actions ----
 function setTab(t){
   state.tab=t; state.openPerson=null;
+  ls(TK, t);                       // so a reload comes back where you were
   if(t==="route"){ startRoutePoll(); refreshQuiet().then(paintLive); }
   else { stopRoutePoll(); if(lmap){ lmap.remove(); lmap=null; } }
   render(); renderInstall();
@@ -679,11 +683,11 @@ function setDraft(f,v){
 }
 
 async function addExpense(){
-  const desc=document.getElementById("f-desc").value.trim();
+  const desc=state.desc.trim();
   if(!desc){ await ui.alert("Needs a label", "Type what the payment was for."); return; }
   const shares={};
   if(state.mode==="equal"){
-    const amt=Math.round(parseFloat(document.getElementById("f-amt").value));
+    const amt=Math.round(parseFloat(state.amt));
     if(!amt||amt<=0){ await ui.alert("Needs an amount", "Put in what the bill came to."); return; }
     splitEqual(amt,N,state.expenses.length).forEach((v,i)=>shares[FRIENDS[i]]=v);
   }else{
@@ -693,7 +697,7 @@ async function addExpense(){
   }
   const now=Date.now();
   if(await push("add_expense", {id:String(now), ts:now, cat:state.cat, desc, payer:state.payer, mode:state.mode, shares})){
-    state.draft={};
+    state.draft={}; state.desc=""; state.amt="";
     render();
   }
 }
@@ -908,7 +912,7 @@ function viewLog(t){
       ${Object.entries(CATS).map(([k,l])=>`<button class="opt ${state.cat===k?"on":""}" onclick="setCat('${k}')">${l}</button>`).join("")}
     </div>
     <label class="lbl" for="f-desc">What was it</label>
-    <input class="f" id="f-desc">
+    <input class="f" id="f-desc" value="${esc(state.desc)}" oninput="state.desc=this.value">
     <div style="margin-top:12px;max-width:60%">
       <label class="lbl" id="f-payer-lbl">Paid by</label>
       <button class="pick" aria-labelledby="f-payer-lbl" onclick="pickPayer()">${esc(state.payer)}</button>
@@ -922,7 +926,8 @@ function viewLog(t){
     ${state.mode==="equal" ? `
       <div style="margin-top:14px;max-width:60%">
         <label class="lbl" for="f-amt">Total amount</label>
-        <div class="money"><span>₹</span><input type="number" inputmode="numeric" id="f-amt" placeholder="0"></div>
+        <div class="money"><span>₹</span><input type="number" inputmode="numeric" id="f-amt" placeholder="0"
+          value="${esc(state.amt)}" oninput="state.amt=this.value"></div>
       </div>
     ` : `
       ${FRIENDS.map(f=>`
@@ -1625,16 +1630,6 @@ if("serviceWorker" in navigator){
   navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:"application/javascript"}))).catch(()=>{});
 }
 
-const manifest={
-  name:"Trip Split", short_name:"Trip Split", display:"standalone",
-  background_color:"#f7f7f7", theme_color:"#ffffff", start_url:".",
-  icons:[{src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' fill='%23101010'/%3E%3Cpath d='M60 150L132 42' stroke='%23fff' stroke-width='14'/%3E%3C/svg%3E", sizes:"192x192", type:"image/svg+xml"}]
-};
-const mlink=document.createElement("link");
-mlink.rel="manifest";
-mlink.href=URL.createObjectURL(new Blob([JSON.stringify(manifest)],{type:"application/json"}));
-document.head.appendChild(mlink);
-
 async function boot(){
   const q = new URLSearchParams(location.search);
   const owner = q.get("owner"), join = q.get("join");
@@ -1642,6 +1637,9 @@ async function boot(){
 
   if(owner){ KEY = owner; ls(KK, owner); }
   else KEY = ls(KK) || null;
+
+  const lastTab = ls(TK);
+  if(["log","settle","route","trip"].includes(lastTab)) state.tab = lastTab;
 
   // Put the last known ledger on screen at once, then go and get the real one.
   try{
@@ -1670,6 +1668,7 @@ async function boot(){
       state.gateMsg = "No signal, and nothing saved on this phone yet. Try again once you are back online.";
     }
   }
+  if(state.tab === "route") setTab("route");   // starts the poll and builds the map
   render();
   renderInstall();
 }
