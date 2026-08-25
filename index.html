@@ -175,6 +175,16 @@
   /* navigation */
   .navbar{background:var(--ink);color:#fff;border-radius:16px;padding:17px 19px;margin-bottom:16px}
   .navtop{display:flex;align-items:flex-start;gap:14px}
+  .navicon{width:40px;height:40px;flex-shrink:0;stroke:#fff;fill:none;stroke-width:2;
+    stroke-linecap:round;stroke-linejoin:round}
+  .mearrow{width:26px;height:26px;margin:-13px 0 0 -13px;transition:transform 300ms linear}
+  .mearrow svg{width:26px;height:26px;display:block;filter:drop-shadow(0 1px 2px rgba(0,0,0,.4))}
+  .mapbar{display:flex;gap:7px;align-items:center;margin:12px 0 0;flex-wrap:wrap}
+  .mapbar .opt{padding:7px 13px;font-size:13px}
+  .compass{margin-left:auto;display:flex;align-items:center;gap:7px;font-size:12.5px;
+    color:var(--dim);font-weight:600}
+  .compass svg{width:19px;height:19px;transition:transform 300ms linear}
+  .leaflet-control-attribution{font-size:9.5px;background:rgba(255,255,255,.75)}
   .navtop .dist{font-size:27px;font-weight:700;letter-spacing:-.03em;line-height:1.1;flex-shrink:0}
   .navtop .big{font-size:17px;font-weight:600;letter-spacing:-.015em}
   .navtop .sub{font-size:12.5px;opacity:.7;margin-top:3px}
@@ -213,6 +223,10 @@
   .plaza{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
   .plaza span{font-size:11.5px;font-weight:600;color:var(--dim);background:var(--bg);
     border-radius:100px;padding:4px 10px}
+  .who2do{display:flex;gap:12px;margin:-4px 0 18px}
+  .who2do>div{flex:1;min-width:0;background:var(--bg);border-radius:12px;padding:13px 14px}
+  .who2do b{display:block;font-size:14px;margin-bottom:3px}
+  .who2do span{font-size:12.5px;color:var(--dim);line-height:1.45;display:block}
   .live{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--dim);margin-top:2px}
   .pulse{width:8px;height:8px;border-radius:50%;background:var(--pos);flex-shrink:0;
     animation:pulse 1.8s ease-in-out infinite}
@@ -431,7 +445,8 @@ const draftTotal = () => FRIENDS.reduce((s,f)=>s+Math.round(num(state.draft[f]))
 // token for everyone else. The server decides which it is; the app never does.
 const KK = "tripsplit5:key", CK = "tripsplit5:cache", JK = "tripsplit5:join",
       MK = "tripsplit5:migrated", IK = "tripsplit5:installed",
-      SHK = "tripsplit5:noshare", RK = "tripsplit5:roadline2", TK = "tripsplit5:tab";
+      SHK = "tripsplit5:noshare", RK = "tripsplit5:roadline2", TK = "tripsplit5:tab",
+      MSK = "tripsplit5:mapstyle";
 let KEY = null;
 
 function ls(k, v){
@@ -759,6 +774,9 @@ function startShare(silent){
     async pos => {
       state.sharing = true;
       const {latitude:lat, longitude:lng} = pos.coords;
+      if(pos.coords.heading != null && !isNaN(pos.coords.heading) && pos.coords.speed > 0.5){
+        heading = pos.coords.heading;   // only trust it while actually moving
+      }
       try{
         await rpc("share_location", {p_token:KEY, p_name:myName(), p_lat:lat, p_lng:lng});
         // Show our own pin straight away rather than waiting for the next poll.
@@ -1209,6 +1227,24 @@ async function loadRoadLine(){
 // last centre and zoom so a background refresh does not yank the view back.
 // Leaflet takes colours as strings, so mirror the two tokens it needs.
 const BRAND = "#e61e4d", LIVE = "#047857";
+
+// All three are free and need no key. Attribution is a licence condition, so
+// the control stays on rather than being switched off for tidiness.
+const TILES = {
+  map: { name:"Map", url:"https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+         att:"&copy; OpenStreetMap" },
+  dark:{ name:"Night", url:"https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+         att:"&copy; OpenStreetMap, &copy; CARTO" },
+  sat: { name:"Satellite",
+         url:"https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+         att:"Esri, Maxar, Earthstar Geographics" },
+};
+function mapStyle(){ const v = ls(MSK); return TILES[v] ? v : "map"; }
+function setMapStyle(k){ ls(MSK, k); mountMap(); render(); }
+
+// Follow is on until you drag the map yourself; the button puts it back.
+let following = true;
+let heading = null;   // degrees from north, when the GPS reports it
 let lmap = null, lview = null, peopleLayer = null, pins = {};
 
 function paintPeople(){
@@ -1256,6 +1292,39 @@ function say(text){
   u.lang = "en-IN"; u.rate = 0.98;
   speechSynthesis.cancel();
   speechSynthesis.speak(u);
+}
+
+// One glyph per kind of turn, drawn in a 24x24 box. Left variants are the
+// right ones mirrored, so there is half as much path data to get wrong.
+const GLYPH = {
+  straight: "M12 22V5 M7 10l5-5 5 5",
+  right:    "M9 22v-8a4 4 0 0 1 4-4h4 M13 6l4 4-4 4",
+  slight:   "M9 22v-7a6 6 0 0 1 1.8-4.3L15 7 M10 6h6v6",
+  sharp:    "M9 22v-7a4 4 0 0 1 6.6-3L17 13 M12 15h6V9",
+  uturn:    "M7 22V12a5 5 0 0 1 10 0v4 M13 12l4 4 4-4",
+  round:    "M12 22v-6 M12 16a4 4 0 1 1 4-4h4 M16 8l4 4-4 4",
+  arrive:   "M12 21V4 M12 4h7l-2 3 2 3h-7",
+  depart:   "M12 22v-9 M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
+};
+
+// Which glyph, and whether to flip it. OSRM says sharp/slight/left/right.
+function glyphFor(m){
+  const t = m.type, w = m.modifier || "";
+  if(t === "arrive")  return ["arrive", false];
+  if(t === "depart")  return ["depart", false];
+  if(t === "roundabout" || t === "rotary") return ["round", false];
+  if(t === "uturn" || w === "uturn")       return ["uturn", false];
+  const left = w.includes("left");
+  if(w.includes("sharp"))  return ["sharp",  left];
+  if(w.includes("slight")) return ["slight", left];
+  if(left || w.includes("right")) return ["right", left];
+  return ["straight", false];
+}
+
+function arrowSVG(m, cls){
+  const [g, flip] = glyphFor(m);
+  return `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">`
+    + `<path d="${GLYPH[g]}"${flip ? ' transform="scale(-1,1) translate(-24,0)"' : ""}/></svg>`;
 }
 
 // OSRM's maneuver object turned into something a person would actually say.
@@ -1386,16 +1455,16 @@ function navTick(lat, lng){
 
   const left = Math.max(0, nav.along[nav.line.length-1] - nav.along[cur]);
   const after = nav.steps[nav.idx+2];
-  nav.now = {d, text: phrase(next),
+  nav.now = {d, text: phrase(next), man: next.maneuver,
              then: after ? phrase(after) : "",
              left, eta: nav.eta * (nav.total ? left/nav.total : 0)};
   if(lmap){
     if(!nav.meMark){
-      nav.meMark = L.circleMarker(here,
-        {radius:10, color:"#fff", weight:3, fillColor:"#1a73e8", fillOpacity:1}).addTo(lmap);
+      nav.meMark = L.marker(here, {icon: meIcon(), zIndexOffset:900}).addTo(lmap);
       lmap.setView(here, Math.max(lmap.getZoom(), 16));
     }else{
-      glideTo(here);
+      nav.meMark.setIcon(meIcon());
+      if(following) glideTo(here); else nav.meMark.setLatLng(here);
     }
   }
   paintNav();
@@ -1423,6 +1492,42 @@ function glideTo(to){
   glideRAF = requestAnimationFrame(step);
 }
 
+// The dot points where you are going when the GPS reports a heading.
+function meIcon(){
+  const rot = heading == null ? "" : ` style="transform:rotate(${Math.round(heading)}deg)"`;
+  const shape = heading == null
+    ? `<circle cx="13" cy="13" r="7" fill="#1a73e8" stroke="#fff" stroke-width="3"/>`
+    : `<path d="M13 3l7 18-7-4-7 4z" fill="#1a73e8" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>`;
+  return L.divIcon({ className:"", iconSize:[0,0],
+    html:`<div class="mearrow"${rot}><svg viewBox="0 0 26 26">${shape}</svg></div>` });
+}
+
+function recentre(){
+  following = true;
+  const me = state.locations.find(p => p.name === myName());
+  const to = nav && nav.meMark ? nav.meMark.getLatLng() : (me ? [me.lat, me.lng] : null);
+  if(to && lmap) lmap.setView(to, Math.max(lmap.getZoom(), 16), {animate:true});
+  paintMapBar();
+}
+
+function paintMapBar(){
+  const el = document.getElementById("mapbar");
+  if(el) el.innerHTML = mapBarHTML();
+}
+
+function mapBarHTML(){
+  const cur = mapStyle();
+  return Object.keys(TILES).map(k =>
+      `<button class="opt ${k===cur?"on":""}" onclick="setMapStyle('${k}')">${TILES[k].name}</button>`
+    ).join("")
+    + `<button class="opt ${following?"on":""}" onclick="recentre()">Follow me</button>`
+    + (heading == null ? "" : `<span class="compass" aria-label="Heading ${Math.round(heading)} degrees">
+         <svg viewBox="0 0 24 24" style="transform:rotate(${-Math.round(heading)}deg)" aria-hidden="true">
+           <path d="M12 2v20M12 2l-4 6h8z" fill="${BRAND}" stroke="none"/>
+           <circle cx="12" cy="12" r="10" fill="none" stroke="var(--edge)" stroke-width="1.5"/>
+         </svg>N</span>`);
+}
+
 function paintNav(opt){
   const el = document.getElementById("nav");
   if(!el) return;
@@ -1431,10 +1536,12 @@ function paintNav(opt){
     return;
   }
   if(!nav){ el.innerHTML = ""; return; }
-  const n = nav.now || {d:0, text:phrase(nav.steps[0]), then:"", left:nav.total, eta:nav.eta};
+  const n = nav.now || {d:0, text:phrase(nav.steps[0]), man:nav.steps[0].maneuver,
+                        then:"", left:nav.total, eta:nav.eta};
   el.innerHTML = `
     <div class="navbar">
       <div class="navtop">
+        ${n.man ? arrowSVG(n.man, "navicon") : ""}
         <div class="dist">${far(n.d)}</div>
         <div>
           <div class="big">${esc(n.text)}</div>
@@ -1471,8 +1578,12 @@ function mountMap(){
 
   // Extra renderer padding: vectors are drawn well past the visible edge, so
   // panning never reveals an unpainted part of the route.
-  lmap = L.map(el, {attributionControl:false, renderer:L.svg({padding:1})});
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom:18}).addTo(lmap);
+  lmap = L.map(el, {renderer:L.svg({padding:1})});
+  lmap.attributionControl.setPrefix("");
+  const t = TILES[mapStyle()];
+  L.tileLayer(t.url, {maxZoom:19, attribution:t.att}).addTo(lmap);
+  // Dragging by hand means you want to look somewhere else, so stop chasing.
+  lmap.on("dragstart", () => { following = false; paintMapBar(); });
 
   const big = STOPS.filter(x=>x.kind==="stop").map(x=>[x.lat, x.lng]);
   L.polyline(roadPts || big, {color:BRAND, weight:4, opacity:.8}).addTo(lmap);
@@ -1520,7 +1631,8 @@ function viewRoute(){
       <button class="link" onclick="fitMap()">Fit route</button>
     </div>
     <div id="map"></div>
-    <div class="maplegend">
+    <div class="mapbar" id="mapbar">${mapBarHTML()}</div>
+    <div class="maplegend" style="margin-top:12px">
       <span><i style="background:${BRAND}"></i>Stops</span>
       <span><i style="background:#64748b"></i>Places to see</span>
       <span><i style="background:${LIVE}"></i>People, live</span>
@@ -1533,7 +1645,16 @@ function viewRoute(){
       <div class="kicker">The loop</div>
       <a class="link" href="${mapsFullRoute()}" target="_blank" rel="noopener">All in Maps</a>
     </div>
-    <div class="hint" style="margin:-8px 0 16px"><b>Drive</b> guides you with voice while the app is open. Driving with the screen off needs Google Maps.</div>
+    <div class="who2do">
+      <div>
+        <b>Driving? Use Maps</b>
+        <span>Opens Google Maps. Keeps talking with the phone locked or in your pocket.</span>
+      </div>
+      <div>
+        <b>Not driving? Use Drive</b>
+        <span>Stays in this app. Shows the group on the map and what is left to go — but only while this screen is on.</span>
+      </div>
+    </div>
     ${STOPS.map((st,i)=>`
       <div class="leg ${st.kind==="stop"?"big":"see"}">
         <div class="dot"></div>
