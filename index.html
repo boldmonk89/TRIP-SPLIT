@@ -12,6 +12,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
   :root{
     --bg:#f7f7f7; --card:#fff; --ink:#222222; --dim:#717171; --faint:#b0b0b0;
@@ -120,6 +122,11 @@
   .allsquare b{display:block;font-size:17px;font-weight:700;margin-bottom:4px}
 
   /* route */
+  #map{height:300px;border-radius:12px;margin-bottom:18px;background:var(--bg);z-index:0}
+  .leaflet-container{font:inherit}
+  .leaflet-popup-content{font-size:13px;line-height:1.45;margin:10px 12px}
+  .maplegend{display:flex;flex-wrap:wrap;gap:14px;margin:-8px 0 4px;font-size:12px;color:var(--dim)}
+  .maplegend i{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:5px}
   .leg{position:relative;padding:0 0 0 28px}
   .leg::before{content:"";position:absolute;left:7px;top:6px;bottom:-6px;width:2px;background:var(--line)}
   .leg:last-child::before{display:none}
@@ -322,7 +329,8 @@ const draftTotal = () => FRIENDS.reduce((s,f)=>s+Math.round(num(state.draft[f]))
 // One key in localStorage is the whole login: the owner secret for me, a member
 // token for everyone else. The server decides which it is; the app never does.
 const KK = "tripsplit5:key", CK = "tripsplit5:cache", JK = "tripsplit5:join",
-      MK = "tripsplit5:migrated", IK = "tripsplit5:installed";
+      MK = "tripsplit5:migrated", IK = "tripsplit5:installed",
+      SHK = "tripsplit5:noshare", RK = "tripsplit5:roadline";
 let KEY = null;
 
 function ls(k, v){
@@ -469,7 +477,7 @@ function calc(){
 function setTab(t){
   state.tab=t; state.openPerson=null;
   if(t==="route"){ startRoutePoll(); refreshQuiet().then(()=>{ if(state.tab==="route") render(); }); }
-  else stopRoutePoll();
+  else { stopRoutePoll(); if(lmap){ lmap.remove(); lmap=null; } }
   render(); renderInstall();
 }
 function setCat(k){ state.cat=k; render(); }
@@ -546,13 +554,16 @@ function waInvite(name, token){
 }
 
 // ---- live location ----
-// Opt-in and opt-out both hit the server immediately, so switching it off is
-// not just a local flag - the row is deleted and nobody can see you any more.
+// Starts on its own as soon as the app opens, so nobody has to remember to
+// switch it on. The browser still asks each person for permission the first
+// time - that prompt cannot be skipped, and should not be. Turning it off
+// deletes the row on the server, so it is a real stop, not just a local flag.
 const myName = () => canEdit() ? OWNER : (state.me || "");
 
-function toggleShare(){
-  if(state.sharing) return stopShare();
-  if(!navigator.geolocation){ alert("This phone cannot share location."); return; }
+function startShare(silent){
+  if(!silent) ls(SHK, "");
+  if(state.geoWatch !== null) return;
+  if(!navigator.geolocation){ if(!silent) alert("This phone cannot share location."); return; }
   state.geoWatch = navigator.geolocation.watchPosition(
     async pos => {
       state.sharing = true;
@@ -568,7 +579,8 @@ function toggleShare(){
     err => {
       state.sharing = false;
       if(state.geoWatch!==null){ navigator.geolocation.clearWatch(state.geoWatch); state.geoWatch=null; }
-      alert(err.code===1 ? "Location permission was refused." : "Could not get your location.");
+      // On auto-start a refusal is just an answer, not an error worth a popup.
+      if(!silent) alert(err.code===1 ? "Location permission was refused." : "Could not get your location.");
       render();
     },
     { enableHighAccuracy:true, maximumAge:15000, timeout:20000 }
@@ -576,6 +588,7 @@ function toggleShare(){
 }
 
 async function stopShare(){
+  ls(SHK, "1");   // remembered, so auto-start does not immediately undo it
   if(state.geoWatch!==null){ navigator.geolocation.clearWatch(state.geoWatch); state.geoWatch=null; }
   state.sharing = false;
   try{ await rpc("stop_location", {p_token:KEY, p_name:myName()}); }catch(e){}
@@ -976,6 +989,58 @@ function viewFriends(){
   </section>`;
 }
 
+// A straight line between stops would cut across the mountains, so ask OSRM
+// once for the real driving geometry. It never changes, so it is cached
+// forever; if the fetch fails the straight line is still drawn.
+let roadPts = null, roadTried = false;
+async function loadRoadLine(){
+  if(roadTried) return;
+  roadTried = true;
+  try{
+    const cached = JSON.parse(ls(RK) || "null");
+    if(cached){ roadPts = cached; mountMap(); return; }
+  }catch(e){}
+  try{
+    const pts = STOPS.filter(x=>x.kind==="stop").map(x=>x.lng+","+x.lat).join(";");
+    const r = await fetch("https://router.project-osrm.org/route/v1/driving/"+pts+"?overview=full&geometries=geojson");
+    const j = await r.json();
+    roadPts = j.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+    ls(RK, JSON.stringify(roadPts));
+    if(state.tab==="route") mountMap();
+  }catch(e){}
+}
+
+// render() replaces the whole tab, which throws the map away with it. Keep the
+// last centre and zoom so a background refresh does not yank the view back.
+let lmap = null, lview = null;
+function mountMap(){
+  const el = document.getElementById("map");
+  if(!el || typeof L === "undefined") return;
+  if(lmap){ lview = {c:lmap.getCenter(), z:lmap.getZoom()}; lmap.remove(); lmap = null; }
+
+  lmap = L.map(el, {attributionControl:false});
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom:18}).addTo(lmap);
+
+  const big = STOPS.filter(x=>x.kind==="stop").map(x=>[x.lat, x.lng]);
+  L.polyline(roadPts || big, {color:"#ff385c", weight:4, opacity:.75}).addTo(lmap);
+  loadRoadLine();
+
+  for(const st of STOPS){
+    L.circleMarker([st.lat, st.lng], {
+      radius: st.kind==="stop" ? 7 : 5, color:"#fff", weight:2,
+      fillColor: st.kind==="stop" ? "#ff385c" : "#8a8a8a", fillOpacity:1,
+    }).addTo(lmap).bindPopup("<b>"+esc(st.name)+"</b><br>"+esc(st.note));
+  }
+
+  for(const p of state.locations){
+    L.circleMarker([p.lat, p.lng], {radius:9, color:"#fff", weight:3, fillColor:"#008a05", fillOpacity:1})
+      .addTo(lmap).bindPopup("<b>"+esc(p.name)+"</b><br>"+ago(p.updatedAt));
+  }
+
+  if(lview) lmap.setView(lview.c, lview.z);
+  else lmap.fitBounds(L.latLngBounds([...big, ...state.locations.map(p=>[p.lat, p.lng])]), {padding:[26,26]});
+}
+
 const mapsPin   = st => "https://www.google.com/maps/search/?api=1&query="+st.lat+","+st.lng;
 const mapsNavTo = st => "https://www.google.com/maps/dir/?api=1&destination="+st.lat+","+st.lng+"&travelmode=driving";
 // One link for the whole loop: start, every major stop as a waypoint, end.
@@ -994,6 +1059,16 @@ function viewRoute(){
   const me   = myName();
 
   return `
+  <section>
+    <div class="shead"><div class="kicker">The map</div></div>
+    <div id="map"></div>
+    <div class="maplegend">
+      <span><i style="background:#ff385c"></i>Stops</span>
+      <span><i style="background:#8a8a8a"></i>Places to see</span>
+      <span><i style="background:#008a05"></i>People, live</span>
+    </div>
+  </section>
+
   <section>
     <div class="shead"><div class="kicker">The loop</div></div>
     ${STOPS.map(st=>`
@@ -1024,11 +1099,13 @@ function viewRoute(){
   </section>
 
   <section>
-    <div class="shead">
-      <div class="kicker">Where everyone is</div>
-      ${me?`<button class="link" onclick="toggleShare()">${state.sharing?"Stop sharing":"Share mine"}</button>`:""}
-    </div>
-    ${state.sharing?`<div class="live"><span class="pulse"></span>Your location is on. Only this group can see it.</div>`:""}
+    <div class="shead"><div class="kicker">Where everyone is</div></div>
+    ${!me ? ""
+      : state.sharing
+        ? `<div class="live"><span class="pulse"></span>Yours is on · only this group sees it
+             <button class="x" style="padding:0 0 0 4px" onclick="stopShare()">turn off</button></div>`
+        : `<div class="live">Yours is off
+             <button class="x" style="padding:0 0 0 4px" onclick="startShare()">turn on</button></div>`}
     ${live.length===0
       ? `<div class="empty">Nobody is sharing right now.</div>`
       : live.map(p=>`
@@ -1086,6 +1163,8 @@ function render(){
   : state.tab==="trip"  ? viewTrip(t)
   : state.tab==="route" ? viewRoute()
   : viewSettle(t);
+
+  if(state.tab==="route") mountMap();
 }
 document.querySelectorAll("nav button").forEach(b=>b.addEventListener("click",()=>setTab(b.dataset.tab)));
 
@@ -1165,6 +1244,7 @@ async function boot(){
   try{
     await refresh();
     if(canEdit()) await migrateLocal();
+    if(!ls(SHK)) startShare(true);
   }catch(e){
     // No signal. Keep showing the cached copy if there is one; say so if not.
     if(!state.expenses.length && !state.paybacks.length){
