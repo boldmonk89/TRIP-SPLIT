@@ -472,7 +472,7 @@ async function copyLink(token){
 }
 function waInvite(name, token){
   const msg = name+", here is the trip hisaab: "+inviteLink(token)
-    +"\n\nOpen it, type your name, and you can see everything — who paid what and who owes whom. Live.";
+    +"\n\nOpen it, type your name, and you can see everything — who paid what and who has to pay who. Live.";
   window.open("https://wa.me/?text="+encodeURIComponent(msg), "_blank");
 }
 
@@ -510,7 +510,7 @@ function whatsappText(){
 
   s+=rule+"💸 *WHO PAYS WHOM*\n";
   if(t.transfers.length===0){
-    s+="\n✅ Nobody owes anybody anything.\n";
+    s+="\n✅ No one has to pay anyone.\n";
   }else{
     for(const f of FRIENDS) for(const x of t.transfers.filter(x=>x.from===f)){
       s+="\n• *"+f+"* → *"+x.to+"*  ·  *"+rupee(x.amount)+"*";
@@ -525,7 +525,7 @@ function whatsappText(){
   for(const f of FRIENDS){
     const bal=t.net[f];
     s+="\n"+(bal>0?"🟢":bal<0?"🔴":"⚪")+" *"+f+"* — "
-      +(bal>0?"gets back *"+rupee(bal)+"*":bal<0?"owes *"+rupee(-bal)+"*":"is settled up");
+      +(bal>0?"gets *"+rupee(bal)+"* back":bal<0?"has to pay *"+rupee(-bal)+"*":"is all settled");
     s+="\n   _spent "+rupee(t.paid[f])+" · his share "+rupee(t.share[f])+"_";
   }
   s+="\n";
@@ -547,7 +547,7 @@ function updateStatus(t){
   el.className = "status" + (t.total===0 ? " idle" : n===0 ? " ok" : "");
   el.textContent =
     t.total===0 ? "Nothing logged yet"
-    : n===0 ? "Nobody owes anything"
+    : n===0 ? "No one has to pay anything"
     : `${rupee(due)} still to settle`;
 }
 
@@ -652,7 +652,7 @@ function viewSettle(t){
   <section>
     <div class="shead"><div class="kicker">Who pays whom</div></div>
     ${t.total===0 ? `<div class="empty">Log a payment first and this fills itself in.</div>`
-      : t.transfers.length===0 ? `<div class="allsquare"><b>Nobody owes anything.</b></div>`
+      : t.transfers.length===0 ? `<div class="allsquare"><b>No one has to pay anything.</b></div>`
       : `${FRIENDS.map(f=>{
           const mine=t.transfers.filter(x=>x.from===f);
           if(!mine.length) return "";
@@ -716,7 +716,7 @@ function viewSettle(t){
               + `<div class="drow" style="border-top:1px solid var(--line);margin-top:5px;padding-top:9px">
                    <span style="color:var(--dim)">Total</span><span class="amt">${rupee(t.paid[f])}</span></div>`}
           <div class="note" style="margin-top:14px">
-            ${bal>0 ? `Owed <b>${rupee(bal)}</b> back.` : bal<0 ? `Still owes <b>${rupee(-bal)}</b>.` : `All settled up.`}
+            ${bal>0 ? `Gets <b>${rupee(bal)}</b> back.` : bal<0 ? `Has to pay <b>${rupee(-bal)}</b>.` : `All settled.`}
             Should still be holding <b>${rupee(t.pocket[f])}</b> in cash.
           </div>
         </div>`:""}
