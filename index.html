@@ -776,7 +776,7 @@ function startShare(silent){
         err.code===1 ? "Allow it in your browser settings to show up on the map." : "");
       paintLive();
     },
-    { enableHighAccuracy:true, maximumAge:15000, timeout:20000 }
+    { enableHighAccuracy:true, maximumAge:1000, timeout:20000 }
   );
 }
 
@@ -800,7 +800,9 @@ async function refreshQuiet(){
 let routePoll = null;
 function startRoutePoll(){
   if(routePoll !== null) return;
-  routePoll = setInterval(async () => { await refreshQuiet(); paintLive(); }, 20000);
+  // Everyone else's position comes from the server, so this is a network call
+  // per tick - 10s keeps it feeling live without hammering it.
+  routePoll = setInterval(async () => { await refreshQuiet(); paintLive(); }, 10000);
 }
 function stopRoutePoll(){
   if(routePoll === null) return;
@@ -1321,6 +1323,7 @@ async function stopNav(){
   if(!nav) return;
   if(window.speechSynthesis) speechSynthesis.cancel();
   try{ if(nav.wake) await nav.wake.release(); }catch(e){}
+  cancelAnimationFrame(glideRAF);
   if(nav.layer && lmap) lmap.removeLayer(nav.layer);
   nav = null;
   paintNav();
@@ -1366,15 +1369,43 @@ function navTick(lat, lng){
   if(nav.off >= 3){ const i = STOPS.indexOf(nav.dest); nav.off = 0; startNav(i); return; }
 
   const left = Math.max(0, nav.along[nav.line.length-1] - nav.along[cur]);
-  nav.now = {d, text: phrase(next), road: next.name || "",
+  const after = nav.steps[nav.idx+2];
+  nav.now = {d, text: phrase(next),
+             then: after ? phrase(after) : "",
              left, eta: nav.eta * (nav.total ? left/nav.total : 0)};
   if(lmap){
-    lmap.setView(here, Math.max(lmap.getZoom(), 15), {animate:true});
-    if(!nav.meMark) nav.meMark = L.circleMarker(here,
-      {radius:10, color:"#fff", weight:3, fillColor:"#1a73e8", fillOpacity:1}).addTo(lmap);
-    else nav.meMark.setLatLng(here);
+    if(!nav.meMark){
+      nav.meMark = L.circleMarker(here,
+        {radius:10, color:"#fff", weight:3, fillColor:"#1a73e8", fillOpacity:1}).addTo(lmap);
+      lmap.setView(here, Math.max(lmap.getZoom(), 16));
+    }else{
+      glideTo(here);
+    }
   }
   paintNav();
+}
+
+// Slide the marker and the map from where they are to the new fix over about
+// a second, which is roughly how often a fix arrives - so the dot moves with
+// the car rather than teleporting once a second.
+let glideRAF = null;
+function glideTo(to){
+  if(!nav || !nav.meMark || !lmap) return;
+  const from = nav.meMark.getLatLng();
+  if(matchMedia("(prefers-reduced-motion: reduce)").matches){
+    nav.meMark.setLatLng(to); lmap.panTo(to, {animate:false}); return;
+  }
+  const t0 = performance.now(), dur = 950;
+  cancelAnimationFrame(glideRAF);
+  const step = now => {
+    const t = Math.min(1, (now - t0) / dur);
+    const e = t < .5 ? 2*t*t : 1 - Math.pow(-2*t+2, 2)/2;   // ease in out
+    const p = [from.lat + (to[0]-from.lat)*e, from.lng + (to[1]-from.lng)*e];
+    nav.meMark.setLatLng(p);
+    lmap.panTo(p, {animate:false});
+    if(t < 1) glideRAF = requestAnimationFrame(step);
+  };
+  glideRAF = requestAnimationFrame(step);
 }
 
 function paintNav(opt){
@@ -1385,14 +1416,14 @@ function paintNav(opt){
     return;
   }
   if(!nav){ el.innerHTML = ""; return; }
-  const n = nav.now || {d:0, text:phrase(nav.steps[0]), road:"", left:nav.total, eta:nav.eta};
+  const n = nav.now || {d:0, text:phrase(nav.steps[0]), then:"", left:nav.total, eta:nav.eta};
   el.innerHTML = `
     <div class="navbar">
       <div class="navtop">
         <div class="dist">${far(n.d)}</div>
         <div>
           <div class="big">${esc(n.text)}</div>
-          ${n.road?`<div class="sub">on ${esc(n.road)}</div>`:""}
+          ${n.then?`<div class="sub">then ${esc(n.then.charAt(0).toLowerCase()+n.then.slice(1))}</div>`:""}
         </div>
       </div>
       <div class="navfoot">
