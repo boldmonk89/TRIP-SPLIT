@@ -491,46 +491,49 @@ async function doJoin(){
 }
 
 // ---- share ----
-const pad = (s,w) => String(s) + " ".repeat(Math.max(0, w - String(s).length));
 function dayKey(ts){ return new Date(ts).toLocaleDateString("en-IN",{day:"numeric",month:"short"}); }
 
+// WhatsApp uses a proportional font, so padded columns never line up. Every
+// line here stands on its own instead, with the headings carrying the shape.
 function whatsappText(){
   const t=calc();
-  let s="*TRIP SPLIT* — "+TRIP+"\n";
-  s+="Shared things split 5 ways. Food is per person — whatever each of us ordered.\n\n";
+  const rule="\n━━━━━━━━━━━━━━━\n";
+  const why=x=>Object.entries(x.why).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1])
+    .map(([k])=>CATS[k].toLowerCase()).join(", ");
 
-  s+="*Money each of us has spent*\n";
+  let s="🧾 *TRIP SPLIT*\n"+TRIP+"\n\n";
+  s+="Shared things split 5 ways. Food is per person — whatever each of us ordered.\n";
+  if(t.total===0) return s+"\nNothing logged yet.";
+
+  s+=rule+"💸 *WHO PAYS WHOM*\n";
+  if(t.transfers.length===0){
+    s+="\n✅ All square — nobody owes anybody.\n";
+  }else{
+    for(const f of FRIENDS) for(const x of t.transfers.filter(x=>x.from===f)){
+      s+="\n• *"+f+"* → *"+x.to+"*  ·  *"+rupee(x.amount)+"*";
+      const w=why(x); if(w) s+="\n   _"+w+"_";
+    }
+    s+="\n";
+    const square=FRIENDS.filter(f=>!t.transfers.some(x=>x.from===f));
+    if(square.length) s+="\n✅ Nothing to pay: "+square.join(", ")+"\n";
+  }
+
+  s+=rule+"📊 *EVERYONE'S NUMBERS*\n";
   for(const f of FRIENDS){
     const bal=t.net[f];
-    s+="  "+pad(f,11)+pad(rupee(t.paid[f]),9);
-    s+= bal>0 ? "gets back "+rupee(bal) : bal<0 ? "owes "+rupee(-bal) : "square";
-    s+="\n";
+    s+="\n"+(bal>0?"🟢":bal<0?"🔴":"⚪")+" *"+f+"* — "
+      +(bal>0?"gets back *"+rupee(bal)+"*":bal<0?"owes *"+rupee(-bal)+"*":"all square");
+    s+="\n   _spent "+rupee(t.paid[f])+" · his share "+rupee(t.share[f])+"_";
   }
-  s+="\n*What each of us used up*\n";
-  for(const f of FRIENDS) s+="  "+pad(f,11)+rupee(t.share[f])+"\n";
-
-  s+="\n*Who pays whom*\n";
-  if(t.total===0){
-    s+="  Nothing logged yet.\n";
-  } else if(t.transfers.length===0){
-    s+="  All square — nobody owes anybody.\n";
-  } else {
-    for(const f of FRIENDS){
-      const mine=t.transfers.filter(x=>x.from===f);
-      if(!mine.length){ s+="  "+pad(f,11)+"nothing to pay\n"; continue; }
-      s+="  "+f+"\n";
-      for(const x of mine){
-        const bits=Object.entries(x.why).filter(([,v])=>v>0).map(([k])=>CATS[k].toLowerCase());
-        s+="     -> "+pad(x.to,10)+"*"+rupee(x.amount)+"*"+(bits.length?"  ("+bits.join(", ")+")":"")+"\n";
-      }
-    }
-  }
+  s+="\n";
 
   if(state.paybacks.length){
-    s+="\n*Already paid back*\n";
-    for(const p of state.paybacks) s+="  "+p.from+" -> "+p.to+"  "+rupee(p.amount)+"\n";
+    s+=rule+"🤝 *ALREADY PAID BACK*\n";
+    for(const p of state.paybacks) s+="\n• "+p.from+" → "+p.to+"  ·  "+rupee(p.amount);
+    s+="\n";
   }
-  return s;
+
+  return s+rule+"💰 Total spent so far: *"+rupee(t.total)+"*";
 }
 function shareWA(){ window.open("https://wa.me/?text="+encodeURIComponent(whatsappText()),"_blank"); }
 
