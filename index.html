@@ -295,7 +295,7 @@
 <script>
 const FRIENDS = ["Archit","Satwik","Kripansh","Tejas","Akshat"];
 const OWNER = "Tejas";   // the one holding the owner link; everyone else reads only
-const TRIP = "Delhi · Mussoorie · Landour · Dhanaulti · 8–11 Sep";
+const TRIP = "Delhi · Haridwar · Rishikesh · Mussoorie · Landour · Dhanaulti · 8–11 Sep";
 
 // ---- the shared ledger ----
 // The key below is meant to be public — on its own it can reach nothing. Every
@@ -325,32 +325,50 @@ const CATS = { car:"Car", fuel:"Fuel", toll:"Toll", stay:"Stay", food:"Food", ac
 // links are built from, so they have to be the real place, not the town centre
 // where that differs (Char Dukan is up in Landour, not on Mall Road).
 const STOPS = [
-  { name:"Samaypur Badli",  note:"Start",                       lat:28.7387, lng:77.1385, kind:"stop" },
-  { name:"Rishikesh",       note:"Bungee jump",                 lat:30.0869, lng:78.2676, kind:"stop" },
-  { name:"Mussoorie",       note:"Queen of the hills",          lat:30.4599, lng:78.0664, kind:"stop" },
-  { name:"Lal Tibba",       note:"Highest point, sunrise",      lat:30.4614, lng:78.1000, kind:"see"  },
-  { name:"Gun Hill",        note:"Ropeway viewpoint",           lat:30.4570, lng:78.0700, kind:"see"  },
-  { name:"Mall Road",       note:"Shopping, evening walk",      lat:30.4562, lng:78.0700, kind:"see"  },
-  { name:"Kempty Falls",    note:"Waterfall",                   lat:30.4833, lng:78.0167, kind:"see"  },
-  { name:"Landour",         note:"Quiet cantonment",            lat:30.4560, lng:78.1050, kind:"stop" },
-  { name:"Char Dukan",      note:"Maggi and pancakes",          lat:30.4577, lng:78.1093, kind:"see"  },
-  { name:"Dhanaulti",       note:"Pine forests",                lat:30.4180, lng:78.2400, kind:"stop" },
-  { name:"Eco Park",        note:"Amber and Dhara gardens",     lat:30.4197, lng:78.2372, kind:"see"  },
-  { name:"Surkanda Devi",   note:"Temple trek, 2750m",          lat:30.4053, lng:78.2836, kind:"see"  },
-  { name:"Samaypur Badli",  note:"Back home",                   lat:28.7387, lng:77.1385, kind:"stop" },
+  { name:"Samaypur Badli", note:"Start",                        lat:28.7387, lng:77.1385, kind:"stop" },
+  { name:"Haridwar",       note:"Har Ki Pauri, Ganga aarti",    lat:29.9457, lng:78.1642, kind:"stop" },
+  { name:"Rishikesh",      note:"Laxman Jhula, the river",      lat:30.0869, lng:78.2676, kind:"stop" },
+  { name:"Dehradun",       note:"Last flat ground before the climb", lat:30.3165, lng:78.0322, kind:"stop" },
+
+  { name:"Mussoorie",      note:"Queen of the hills",           lat:30.4599, lng:78.0664, kind:"stop" },
+  { name:"Mall Road",      note:"Shopping, evening walk",       lat:30.4562, lng:78.0700, kind:"see" },
+  { name:"Library Bazar",  note:"The far end of Mall Road",     lat:30.4550, lng:78.0620, kind:"see" },
+  { name:"Gun Hill",       note:"Ropeway viewpoint",            lat:30.4585, lng:78.0680, kind:"see" },
+  { name:"Camels Back Road", note:"3km walk, good at sunset",   lat:30.4590, lng:78.0760, kind:"see" },
+  { name:"The Tavern",     note:"Dining on Mall Road",          lat:30.4562, lng:78.0690, kind:"see" },
+  { name:"Atal Udhyan",    note:"Municipal garden",             lat:30.4640, lng:78.0530, kind:"see" },
+  { name:"George Everest House", note:"The surveyor's old house", lat:30.4550, lng:78.0300, kind:"see" },
+  { name:"Cloud End",      note:"Where Mussoorie runs out",     lat:30.4620, lng:78.0150, kind:"see" },
+  { name:"Kempty Falls",   note:"Waterfall",                    lat:30.4833, lng:78.0167, kind:"see" },
+
+  { name:"Landour",        note:"Quiet cantonment",             lat:30.4560, lng:78.1050, kind:"stop" },
+  { name:"Char Dukan",     note:"Maggi and pancakes",           lat:30.4577, lng:78.1093, kind:"see" },
+  { name:"Landour Bakehouse", note:"The old bakery",            lat:30.4573, lng:78.1085, kind:"see" },
+  { name:"Lal Tibba",      note:"Highest point, sunrise",       lat:30.4614, lng:78.1000, kind:"see" },
+  { name:"SOHAM Himalayan Centre", note:"Art museum",           lat:30.4590, lng:78.1160, kind:"see" },
+
+  { name:"Dhanaulti",      note:"Pine forests",                 lat:30.4180, lng:78.2400, kind:"stop" },
+  { name:"Eco Park",       note:"Amber and Dhara gardens",      lat:30.4197, lng:78.2372, kind:"see" },
+  { name:"Surkanda Devi",  note:"Temple trek, 2750m",           lat:30.4053, lng:78.2836, kind:"see" },
+
+  { name:"Samaypur Badli", note:"Back home",                    lat:28.7387, lng:77.1385, kind:"stop" },
 ];
 
 // What the highway actually costs and what it is called, going up. FASTag
 // plazas on NH-334/NH-7 via Meerut and Muzaffarnagar.
 const ROADS = [
-  { leg:"Delhi → Rishikesh", via:"NH-334 via Meerut, then NH-58/NH-7",
-    tolls:["Bhojpur (Meerut)","Sikri Khurd","Bhagwanpur","Manoharpur"], note:"~230km · 5–6 hrs" },
-  { leg:"Rishikesh → Mussoorie", via:"NH-7 to Dehradun, then hill road",
-    tolls:["Dehradun bypass"], note:"~80km · 2.5 hrs, last 35km climb" },
-  { leg:"Mussoorie ↔ Landour ↔ Dhanaulti", via:"Local hill roads",
-    tolls:[], note:"~40km · petrol, steep" },
-  { leg:"Dhanaulti → Delhi", via:"Down to Dehradun, NH-7 → NH-334",
-    tolls:["Dehradun bypass","Manoharpur","Bhagwanpur","Sikri Khurd","Bhojpur (Meerut)"], note:"~310km · 7–8 hrs" },
+  { leg:"Delhi \u2192 Haridwar", via:"NH-334 via Meerut, Muzaffarnagar, Roorkee",
+    tolls:["Bhojpur (Meerut)","Sikri Khurd","Bhagwanpur","Manoharpur"], note:"~205km \u00b7 5 hrs" },
+  { leg:"Haridwar \u2192 Rishikesh", via:"NH-34 along the Ganga",
+    tolls:[], note:"~25km \u00b7 45 min" },
+  { leg:"Rishikesh \u2192 Dehradun", via:"NH-7",
+    tolls:[], note:"~45km \u00b7 1 hr 15 min" },
+  { leg:"Dehradun \u2192 Mussoorie", via:"Dehradun\u2013Mussoorie hill road",
+    tolls:["Dehradun bypass"], note:"~35km \u00b7 1 hr 15 min, all climb" },
+  { leg:"Mussoorie \u2194 Landour \u2194 Dhanaulti", via:"Local hill roads",
+    tolls:[], note:"~40km \u00b7 petrol, steep" },
+  { leg:"Dhanaulti \u2192 Delhi", via:"Down to Dehradun, NH-7 \u2192 NH-334",
+    tolls:["Dehradun bypass","Manoharpur","Bhagwanpur","Sikri Khurd","Bhojpur (Meerut)"], note:"~310km \u00b7 7\u20138 hrs" },
 ];
 
 // The one genuinely fixed cost. Everything else gets decided on the road and
@@ -359,14 +377,14 @@ const CAR_RATE = 3300;
 const CAR_DAYS = 3;
 
 // Planning projection only — never touches anyone's balance.
-// Delhi (Samaypur Badli) to Mussoorie is 262km by road via NH344G, of which the
-// last ~35km is the climb from Dehradun. Mussoorie -> Landour -> Dhanaulti is
-// another ~35km of hill road. So each way: 227km of highway, then 70km of hills.
-// Landour sits just above Mussoorie, so it rides on the buffer below.
+// Going up we now stop at Haridwar and Rishikesh, so the highway leg is
+// Delhi -> Haridwar -> Rishikesh -> Dehradun, about 275km rather than the 227km
+// a straight run to Dehradun would be. Coming back is the direct road, ~250km.
+// Then ~35km of climb to Mussoorie, and Landour and Dhanaulti on top of that.
 // Mileage is deliberately worst-case — a retrofitted CNG kit on a loaded Creta,
 // and petrol on steep sections with five up, luggage and the AC running.
 const PLAN = {
-  cngKm:454, cngEff:12, cngRate:85,    // 227km each way, Samaypur Badli <-> Dehradun
+  cngKm:525, cngEff:12, cngRate:85,    // 275km up via Haridwar and Rishikesh, ~250km back
   petKm:140, petEff:9,  petRate:105,   // 70km each way, Dehradun -> Mussoorie -> Dhanaulti
   buffer:100,                          // local running up there, charged at petrol rates
   toll:1340,                           // Rs670 each way, FASTag only
@@ -410,7 +428,7 @@ const draftTotal = () => FRIENDS.reduce((s,f)=>s+Math.round(num(state.draft[f]))
 // token for everyone else. The server decides which it is; the app never does.
 const KK = "tripsplit5:key", CK = "tripsplit5:cache", JK = "tripsplit5:join",
       MK = "tripsplit5:migrated", IK = "tripsplit5:installed",
-      SHK = "tripsplit5:noshare", RK = "tripsplit5:roadline";
+      SHK = "tripsplit5:noshare", RK = "tripsplit5:roadline2";
 let KEY = null;
 
 function ls(k, v){
