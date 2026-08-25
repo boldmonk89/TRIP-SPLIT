@@ -79,9 +79,6 @@
   .f{width:100%;font-size:16px;padding:14px 15px;border:1px solid var(--edge);border-radius:12px;background:var(--card)}
   .f:focus{outline:none;border-color:var(--ink);box-shadow:0 0 0 1px var(--ink)}
   .f.num{font-variant-numeric:tabular-nums;font-weight:600}
-  select.f{-webkit-appearance:none;appearance:none;font-weight:600;
-    background-image:linear-gradient(45deg,transparent 50%,var(--dim) 50%),linear-gradient(135deg,var(--dim) 50%,transparent 50%);
-    background-position:calc(100% - 19px) 24px,calc(100% - 14px) 24px;background-size:5px 5px;background-repeat:no-repeat}
   .money{display:flex;align-items:center;border:1px solid var(--edge);border-radius:12px;background:var(--card);padding-left:14px}
   .money:focus-within{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink)}
   .money span{font-size:15px;color:var(--dim);font-weight:600}
@@ -135,6 +132,43 @@
   .settled .amt{margin-left:auto;font-weight:700;font-variant-numeric:tabular-nums;color:var(--ink)}
   .allsquare{padding:34px 0;text-align:center}
   .allsquare b{display:block;font-size:17px;font-weight:700;margin-bottom:4px}
+
+  /* dialogs, sheets, toast */
+  body.locked{overflow:hidden}
+  .scrim{position:fixed;inset:0;z-index:50;background:rgba(15,23,42,.45);
+    display:flex;align-items:flex-end;justify-content:center;animation:fadeIn 150ms ease}
+  .scrim.mid{align-items:center;padding:20px}
+  .sheet{width:100%;max-width:540px;background:var(--card);border-radius:20px 20px 0 0;
+    padding:6px 0 max(10px,env(safe-area-inset-bottom));animation:slideUp 220ms cubic-bezier(.4,0,.2,1)}
+  .sheetHead{font-size:12.5px;font-weight:600;color:var(--dim);padding:16px 22px 8px}
+  .sheetItem{display:flex;align-items:center;width:100%;border:0;background:none;
+    padding:15px 22px;font-size:16px;text-align:left;color:var(--ink);min-height:44px}
+  .sheetItem.on{font-weight:700}
+  .sheetItem .tick{margin-left:auto;color:var(--brand);font-weight:700;visibility:hidden}
+  .sheetItem.on .tick{visibility:visible}
+  .dialog{width:100%;max-width:400px;background:var(--card);border-radius:18px;padding:22px;
+    animation:popIn 170ms cubic-bezier(.4,0,.2,1)}
+  .dTitle{font-size:17px;font-weight:700;letter-spacing:-.02em;line-height:1.35}
+  .dBody{font-size:14px;color:var(--dim);margin-top:8px;line-height:1.5}
+  .dPre{font-size:12.5px;color:var(--dim);margin-top:12px;line-height:1.5;
+    background:var(--bg);border-radius:10px;padding:12px;word-break:break-all;user-select:all}
+  .dActs{display:flex;gap:10px;margin-top:20px}
+  .dActs .btn{margin-top:0}
+  .btn.danger{background:var(--neg)}
+  #toast{position:fixed;left:50%;bottom:calc(86px + env(safe-area-inset-bottom));z-index:60;
+    background:var(--ink);color:#fff;border-radius:100px;padding:11px 20px;font-size:13.5px;
+    font-weight:600;opacity:0;pointer-events:none;transform:translateX(-50%) translateY(10px);
+    transition:opacity var(--t),transform var(--t)}
+  #toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+  @keyframes popIn{from{transform:scale(.96);opacity:0}to{transform:scale(1);opacity:1}}
+  .pick{width:100%;display:flex;align-items:center;font-size:16px;font-weight:600;
+    padding:14px 15px;border:1px solid var(--edge);border-radius:12px;background:var(--card);
+    color:var(--ink);text-align:left}
+  .pick::after{content:"";margin-left:auto;width:7px;height:7px;flex-shrink:0;
+    border-right:2px solid var(--dim);border-bottom:2px solid var(--dim);
+    transform:rotate(45deg) translateY(-2px)}
 
   /* navigation */
   .navbar{background:var(--ink);color:#fff;border-radius:16px;padding:17px 19px;margin-bottom:16px}
@@ -235,6 +269,9 @@
   <div id="install"></div>
   <footer id="foot"></footer>
 </main>
+
+<div id="modal"></div>
+<div id="toast" role="status" aria-live="polite"></div>
 
 <nav>
   <button data-tab="log" class="on">
@@ -401,11 +438,11 @@ async function push(op, data){
   if(!canEdit()) return false;
   try{
     const res = await rpc("owner_apply", {p_secret:KEY, p_op:op, p_data:data||{}});
-    if(res.error){ alert(res.error); return false; }
+    if(res.error){ await ui.alert(res.error); return false; }
     applyLedger(res);
     return true;
   }catch(e){
-    alert("No signal — that was not saved. Try again once you are back online.");
+    await ui.alert("Not saved", "No signal. Try again once you are back online.");
     return false;
   }finally{
     render();
@@ -442,6 +479,87 @@ async function migrateLocal(){
   };
   if(old.plan) payload.plan = old.plan;
   if(await push("import", payload)) ls(MK, "1");
+}
+
+// ---- dialogs ----
+// The OS select and alert/confirm cannot be styled at all - on Android they
+// came up in the system dark theme over a light app. These are the same three
+// jobs done in the app's own skin, and they hand back a promise so the call
+// sites read the way the blocking versions did.
+let modalResolve = null;
+
+function shutModal(value){
+  document.getElementById("modal").innerHTML = "";
+  document.body.classList.remove("locked");
+  removeEventListener("keydown", onModalKey);
+  const r = modalResolve; modalResolve = null;
+  if(r) r(value);
+}
+function onModalKey(e){
+  if(e.key === "Escape"){ e.preventDefault(); shutModal(null); }
+}
+function openModal(html){
+  return new Promise(resolve => {
+    if(modalResolve) shutModal(null);      // never stack two
+    modalResolve = resolve;
+    document.getElementById("modal").innerHTML = html;
+    document.body.classList.add("locked");
+    addEventListener("keydown", onModalKey);
+    const first = document.querySelector("#modal [data-focus]") || document.querySelector("#modal button");
+    if(first) first.focus();
+  });
+}
+
+const ui = {
+  pick: (title, options, current) => openModal(`
+    <div class="scrim" onclick="if(event.target===this)shutModal(null)">
+      <div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+        <div class="sheetHead">${esc(title)}</div>
+        ${options.map(o=>`<button class="sheetItem ${o===current?"on":""}" ${o===current?"data-focus":""}
+           onclick="shutModal(${jq(o)})">${esc(o)}<span class="tick">✓</span></button>`).join("")}
+      </div>
+    </div>`),
+
+  confirm: (title, opt={}) => openModal(`
+    <div class="scrim mid" onclick="if(event.target===this)shutModal(false)">
+      <div class="dialog" role="dialog" aria-modal="true">
+        <div class="dTitle">${esc(title)}</div>
+        ${opt.body?`<div class="dBody">${esc(opt.body)}</div>`:""}
+        <div class="dActs">
+          <button class="btn line" onclick="shutModal(false)">Cancel</button>
+          <button class="btn ${opt.danger?"danger":""}" data-focus onclick="shutModal(true)">${esc(opt.ok||"Yes")}</button>
+        </div>
+      </div>
+    </div>`),
+
+  alert: (title, body) => openModal(`
+    <div class="scrim mid" onclick="if(event.target===this)shutModal()">
+      <div class="dialog" role="dialog" aria-modal="true">
+        <div class="dTitle">${esc(title)}</div>
+        ${body?`<div class="dBody">${esc(body)}</div>`:""}
+        <div class="dActs"><button class="btn" data-focus onclick="shutModal()">OK</button></div>
+      </div>
+    </div>`),
+
+  // when the clipboard is blocked, show the text so it can be selected by hand
+  show: (title, text) => openModal(`
+    <div class="scrim mid" onclick="if(event.target===this)shutModal()">
+      <div class="dialog" role="dialog" aria-modal="true">
+        <div class="dTitle">${esc(title)}</div>
+        <div class="dPre">${esc(text)}</div>
+        <div class="dActs"><button class="btn" data-focus onclick="shutModal()">Done</button></div>
+      </div>
+    </div>`),
+};
+
+// "It worked" does not deserve a dialog you have to dismiss.
+let toastT = null;
+function toast(msg){
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.classList.add("on");
+  clearTimeout(toastT);
+  toastT = setTimeout(() => el.classList.remove("on"), 2200);
 }
 
 // ---- money: whole rupees only, everywhere ----
@@ -532,6 +650,10 @@ function setPlan(key,v){ if(v!==""&&!isNaN(Number(v))){ state.plan[key]=Number(v
 function fixPlan(key,v){ if(v===""||isNaN(Number(v))) state.plan[key]=0; push("set_plan", state.plan); }
 
 function setMode(m){ state.mode=m; render(); }
+async function pickPayer(){
+  const v = await ui.pick("Paid by", FRIENDS, state.payer);
+  if(v){ state.payer = v; render(); }
+}
 function setDraft(f,v){
   state.draft[f]=v;
   const el=document.getElementById("draftTotal");
@@ -540,16 +662,16 @@ function setDraft(f,v){
 
 async function addExpense(){
   const desc=document.getElementById("f-desc").value.trim();
-  if(!desc){ alert("Needs a label."); return; }
+  if(!desc){ await ui.alert("Needs a label", "Type what the payment was for."); return; }
   const shares={};
   if(state.mode==="equal"){
     const amt=Math.round(parseFloat(document.getElementById("f-amt").value));
-    if(!amt||amt<=0){ alert("Needs an amount."); return; }
+    if(!amt||amt<=0){ await ui.alert("Needs an amount", "Put in what the bill came to."); return; }
     splitEqual(amt,N,state.expenses.length).forEach((v,i)=>shares[FRIENDS[i]]=v);
   }else{
     for(const f of FRIENDS) shares[f]=Math.round(num(state.draft[f]));
-    if(FRIENDS.some(f=>shares[f]<0)){ alert("Amounts can't be negative."); return; }
-    if(FRIENDS.reduce((s,f)=>s+shares[f],0)<=0){ alert("Put in at least one person's amount."); return; }
+    if(FRIENDS.some(f=>shares[f]<0)){ await ui.alert("Amounts can't be negative"); return; }
+    if(FRIENDS.reduce((s,f)=>s+shares[f],0)<=0){ await ui.alert("Nothing to add", "Put in at least one person's amount."); return; }
   }
   const now=Date.now();
   if(await push("add_expense", {id:String(now), ts:now, cat:state.cat, desc, payer:state.payer, mode:state.mode, shares})){
@@ -557,23 +679,26 @@ async function addExpense(){
     render();
   }
 }
-function delExpense(id){
-  if(!confirm("Remove this expense?")) return;
+async function delExpense(id){
+  if(!await ui.confirm("Remove this expense?", {ok:"Remove", danger:true})) return;
   push("del_expense", {id:String(id)});
 }
 
-function markPaid(from,to,amount){
-  if(!confirm(from+" handed "+rupee(amount)+" to "+to+"?")) return;
+async function markPaid(from,to,amount){
+  if(!await ui.confirm(from+" paid "+to+" "+rupee(amount)+"?",
+      {body:"This clears it from the list.", ok:"Yes, paid"})) return;
   const now=Date.now();
   push("add_payback", {id:String(now), ts:now, from, to, amount:Math.round(amount)});
 }
-function delPayback(id){
-  if(!confirm("Undo this payback?")) return;
+async function delPayback(id){
+  if(!await ui.confirm("Undo this payback?", {ok:"Undo", danger:true})) return;
   push("del_payback", {id:String(id)});
 }
 
-function resetAll(){
-  if(!confirm("Clear every expense and payback, for everyone? The car rate and the plan stay as they are.")) return;
+async function resetAll(){
+  if(!await ui.confirm("Clear the whole ledger?",
+      {body:"Every expense and payback goes, for everyone. The car rate and the plan stay.",
+       ok:"Clear all", danger:true})) return;
   push("reset", {});
 }
 
@@ -581,14 +706,15 @@ function resetAll(){
 const inviteLink = token => location.origin + location.pathname + "?join=" + token;
 
 function inviteFriend(name){ push("invite", {name}); }
-function uninvite(token, name){
-  if(!confirm("Remove "+name+"'s invite? Their link stops working straight away.")) return;
+async function uninvite(token, name){
+  if(!await ui.confirm("Remove "+name+"?",
+      {body:"Their link stops working straight away.", ok:"Remove", danger:true})) return;
   push("uninvite", {token});
 }
 async function copyLink(token){
   const url = token ? inviteLink(token) : ownerLink();
-  try{ await navigator.clipboard.writeText(url); alert("Link copied."); }
-  catch(e){ prompt("Copy this link:", url); }
+  try{ await navigator.clipboard.writeText(url); toast("Link copied"); }
+  catch(e){ await ui.show("Copy this link", url); }
 }
 function waInvite(name, token){
   const msg = name+", here is the trip hisaab: "+inviteLink(token)
@@ -606,7 +732,7 @@ const myName = () => canEdit() ? OWNER : (state.me || "");
 function startShare(silent){
   if(!silent) ls(SHK, "");
   if(state.geoWatch !== null) return;
-  if(!navigator.geolocation){ if(!silent) alert("This phone cannot share location."); return; }
+  if(!navigator.geolocation){ if(!silent) ui.alert("This phone cannot share location"); return; }
   state.geoWatch = navigator.geolocation.watchPosition(
     async pos => {
       state.sharing = true;
@@ -624,7 +750,8 @@ function startShare(silent){
       state.sharing = false;
       if(state.geoWatch!==null){ navigator.geolocation.clearWatch(state.geoWatch); state.geoWatch=null; }
       // On auto-start a refusal is just an answer, not an error worth a popup.
-      if(!silent) alert(err.code===1 ? "Location permission was refused." : "Could not get your location.");
+      if(!silent) ui.alert(err.code===1 ? "Location permission was refused" : "Could not get your location",
+        err.code===1 ? "Allow it in your browser settings to show up on the map." : "");
       paintLive();
     },
     { enableHighAccuracy:true, maximumAge:15000, timeout:20000 }
@@ -765,10 +892,8 @@ function viewLog(t){
     <label class="lbl" for="f-desc">What was it</label>
     <input class="f" id="f-desc">
     <div style="margin-top:12px;max-width:60%">
-      <label class="lbl" for="f-payer">Paid by</label>
-      <select class="f" id="f-payer" onchange="state.payer=this.value;render()">
-        ${FRIENDS.map(f=>`<option ${state.payer===f?"selected":""}>${f}</option>`).join("")}
-      </select>
+      <label class="lbl" id="f-payer-lbl">Paid by</label>
+      <button class="pick" aria-labelledby="f-payer-lbl" onclick="pickPayer()">${esc(state.payer)}</button>
     </div>
 
     <div class="opts" style="margin-top:18px">
@@ -1131,7 +1256,7 @@ function phrase(step){
 async function startNav(i){
   const dest = STOPS[i];
   const me = state.locations.find(p => p.name === myName());
-  if(!me){ alert("Waiting for your location. Allow location access, then try again."); return; }
+  if(!me){ await ui.alert("Waiting for your location", "Allow location access, then try again."); return; }
 
   paintNav({loading:dest.name});
   try{
@@ -1159,7 +1284,7 @@ async function startNav(i){
     };
   }catch(e){
     nav = null; paintNav();
-    alert("Could not work out a route just now. Try again, or use Go for Google Maps.");
+    await ui.alert("Could not work out a route", "Try again, or use the Maps link instead.");
     return;
   }
 
