@@ -568,7 +568,6 @@ function viewLog(t){
   ${canEdit() ? `
   <section>
     <div class="shead"><div class="kicker">Log a payment</div></div>
-    <div class="hint" style="margin:-8px 0 16px">Whoever actually handed over the money. It splits 5 ways automatically.</div>
     <div class="opts" style="margin-bottom:16px">
       ${Object.entries(CATS).map(([k,l])=>`<button class="opt ${state.cat===k?"on":""}" onclick="setCat('${k}')">${l}</button>`).join("")}
     </div>
@@ -591,9 +590,7 @@ function viewLog(t){
         <label class="lbl">Total amount</label>
         <div class="money"><span>₹</span><input type="number" inputmode="numeric" id="f-amt" placeholder="0"></div>
       </div>
-      <div class="hint" style="margin-top:9px">Divided by 5 — everyone owes ${state.payer} the same. Use this for the car, fuel, toll, a room.</div>
     ` : `
-      <div class="hint" style="margin:14px 0 4px">What each person's own order cost. Leave blank for anyone who had nothing — he pays nothing.</div>
       ${FRIENDS.map(f=>`
         <div class="row" style="padding:9px 0">
           <div class="ini">${initials(f)}</div>
@@ -652,8 +649,7 @@ function viewSettle(t){
     <div class="shead"><div class="kicker">Who pays whom</div></div>
     ${t.total===0 ? `<div class="empty">Log a payment first and this fills itself in.</div>`
       : t.transfers.length===0 ? `<div class="allsquare"><b>All square.</b><span class="hint">Nobody owes anybody right now.</span></div>`
-      : `<div class="hint" style="margin:-8px 0 6px">${canEdit()?"One line per payment. Tap “mark paid” once the cash actually changes hands.":"Updated the moment "+OWNER+" logs anything."}</div>
-        ${FRIENDS.map(f=>{
+      : `${FRIENDS.map(f=>{
           const mine=t.transfers.filter(x=>x.from===f);
           if(!mine.length) return "";
           // The name bar only earns its place when one person's money splits two ways.
@@ -681,7 +677,6 @@ function viewSettle(t){
 
   <section>
     <div class="shead"><div class="kicker">Each person</div></div>
-    <div class="hint" style="margin:-8px 0 14px"><b>Spent</b> is the money he actually handed over, out of his own pocket. <b>His share</b> is what he himself used up — a fifth of anything shared, plus exactly what he ordered on food.<br>Spent more than his share, the extra comes back to him. Spent less, he pays the difference.</div>
     ${FRIENDS.map(f=>{
       const bal=t.net[f], pos=bal>=0, open=state.openPerson===f;
       const mine=state.expenses.filter(e=>e.payer===f);
@@ -743,7 +738,6 @@ function viewTrip(t){
       <div class="kicker">Projection · not counted</div>
       <button class="link" onclick="togglePlan()">${state.showPlan?"Hide":"Show"}</button>
     </div>
-    <div class="hint" style="margin:-8px 0 0">Rough idea of the car, fuel and toll before anyone pays. It stays out of every balance — only what you log above counts.</div>
     ${state.showPlan && !canEdit() ? `<div class="note" style="margin-top:16px">${planNoteHTML()}</div>` : ""}
     ${state.showPlan && canEdit()?`
     <div class="duo" style="margin-top:18px">
@@ -786,9 +780,7 @@ function viewTrip(t){
           oninput="setPlan('toll',this.value)" onblur="fixPlan('toll',this.value)"></div>
       </div>
     </div>
-    <div class="hint" style="margin-top:9px">Buffer covers local running up there. It is costed at the petrol rate.</div>
     <div class="note" style="margin-top:16px" id="planNote">${planNoteHTML()}</div>
-    <div class="hint" style="margin-top:10px">Mileage is set worst-case on purpose. Correct it once you've driven a day and the projection tightens up.</div>
     `:""}
   </section>
 
@@ -796,7 +788,6 @@ function viewTrip(t){
 
   <section>
     <div class="shead"><div class="kicker">Send to the group</div></div>
-    <div class="hint" style="margin:-8px 0 0">Puts the whole thing into a WhatsApp message you can forward: what each person put in, who has to pay whom, and what's already been paid back.</div>
     <button class="btn" onclick="shareWA()">Send to WhatsApp</button>
   </section>`;
 }
@@ -838,7 +829,6 @@ function viewFriends(){
   return `
   <section>
     <div class="shead"><div class="kicker">Friends · ${joined} of ${names.length} joined</div></div>
-    <div class="hint" style="margin:-8px 0 14px">Each person gets their own link. They see the whole hisaab, live — and they cannot change one rupee of it. This list tells you the moment someone opens theirs.</div>
     ${rows}
     <div class="note" style="margin-top:18px">
       <b>Your own link.</b> This is the one that lets you add and remove things. Bookmark it, and never forward it — whoever holds it can edit.
@@ -858,7 +848,6 @@ function gateHTML(){
   if(state.gate==="join") return `
   <section>
     <div class="shead"><div class="kicker">You have been invited</div></div>
-    <div class="hint" style="margin:-8px 0 16px">This is the money hisaab for ${esc(TRIP)}. Put in your name and you are in. You will see everything — who paid what, and who owes whom — and nothing you do can change any of it.</div>
     <label class="lbl">Your name</label>
     <input class="f" id="j-name" autocomplete="name" placeholder="Type your name">
     ${state.gateMsg?`<div class="hint" style="margin-top:9px;color:var(--neg)">${esc(state.gateMsg)}</div>`:""}
@@ -867,7 +856,7 @@ function gateHTML(){
   return `
   <section>
     <div class="shead"><div class="kicker">Invite only</div></div>
-    <div class="hint" style="margin:-8px 0 0">${esc(state.gateMsg || ("This trip is private. Ask "+OWNER+" to send you your own link."))}</div>
+    <div class="hint" style="margin:-8px 0 0">${esc(state.gateMsg || ("Ask "+OWNER+" for your invite link."))}</div>
   </section>`;
 }
 
@@ -888,12 +877,8 @@ function render(){
 
   const t=calc();
   updateStatus(t);
-  rl.innerHTML = canEdit()
-    ? `<b>${esc(OWNER)}</b> · you can add and remove things`
-    : `<b>${esc(state.me||"Guest")}</b> · you can look, not change`;
-  ft.textContent = canEdit()
-    ? "Shared live with everyone you invited."
-    : "Read only — only "+OWNER+" can change anything here.";
+  rl.innerHTML = `<b>${esc(canEdit() ? OWNER : (state.me||"Guest"))}</b>`;
+  ft.textContent = "";
   document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on", b.dataset.tab===state.tab));
   document.getElementById("view").innerHTML =
     state.tab==="log" ? viewLog(t) : state.tab==="trip" ? viewTrip(t) : viewSettle(t);
@@ -916,8 +901,7 @@ function renderInstall(){
       <button class="link" onclick="ls(IK,'1');renderInstall()">Already done</button>
     </div>
     ${deferredPrompt
-      ? `<div class="hint">Runs fullscreen and keeps working offline.</div>
-         <button class="btn" onclick="doInstall()">Add to home screen</button>`
+      ? `<button class="btn" onclick="doInstall()">Add to home screen</button>`
       : `<div class="hint">Safari → Share → <b>Add to Home Screen</b>.</div>`}
   </section>`;
 }
