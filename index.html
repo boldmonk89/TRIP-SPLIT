@@ -192,6 +192,10 @@
     border-top:1px solid rgba(255,255,255,.16);font-size:12.5px;opacity:.85}
   .navfoot button{margin-left:auto;border:1px solid rgba(255,255,255,.35);background:none;color:#fff;
     border-radius:100px;padding:6px 14px;font-size:12.5px;font-weight:600}
+  .navalt{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+  .navalt button{border:1px solid rgba(255,255,255,.3);background:none;color:#fff;border-radius:100px;
+    padding:7px 13px;font-size:12px;font-weight:600;opacity:.65;min-height:24px}
+  .navalt button.on{opacity:1;background:rgba(255,255,255,.16);border-color:transparent}
 
   /* route */
   #map{height:340px;border-radius:12px;margin-bottom:14px;background:var(--bg);z-index:0}
@@ -1357,6 +1361,57 @@ function freshFix(){
   });
 }
 
+// One OSRM route turned into the shape navTick works with.
+function parseRoute(r){
+  const line = r.geometry.coordinates.map(c => [c[1], c[0]]);
+  // Distance from the start of the line to each of its points, so "how far to
+  // the next turn" can follow the road instead of cutting across it.
+  const along = [0];
+  for(let i=1; i<line.length; i++) along[i] = along[i-1] + metres(line[i-1], line[i]);
+  const steps = r.legs[0].steps;
+  return {
+    line, along, steps,
+    // which point on the line each maneuver happens at
+    stepAt: steps.map(st => {
+      const p = [st.maneuver.location[1], st.maneuver.location[0]];
+      let best = 0, bd = Infinity;
+      for(let i=0; i<line.length; i++){ const d = metres(p, line[i]); if(d < bd){ bd = d; best = i; } }
+      return best;
+    }),
+    total: r.distance, eta: r.duration,
+    // the road that most of this route runs on, to tell the options apart
+    via: (steps.map(x => x.name).filter(Boolean)
+      .reduce((best, n, _, all) => {
+        const c = all.filter(m => m === n).length;
+        return c > best.c ? {n, c} : best;
+      }, {n:"", c:0})).n,
+  };
+}
+
+// Road names run long. Trim on a word boundary rather than mid-syllable.
+function shortRoad(n){
+  if(n.length <= 20) return n;
+  const cut = n.slice(0, 20);
+  const sp = cut.lastIndexOf(" ");
+  return (sp > 8 ? cut.slice(0, sp) : cut) + "…";
+}
+
+const pickRoute = k => {
+  const r = nav.routes[k];
+  return { active:k, line:r.line, along:r.along, steps:r.steps, stepAt:r.stepAt,
+           total:r.total, eta:r.eta, idx:0, said:{}, off:0, now:null };
+};
+
+// Tapping a faded line, or its chip, makes it the route being followed.
+function useRoute(k){
+  if(!nav || k === nav.active || !nav.routes[k]) return;
+  Object.assign(nav, pickRoute(k));
+  mountMap();
+  say(phrase(nav.steps[0]));
+  if(nav.last) navTick(nav.last[0], nav.last[1]);
+  paintNav();
+}
+
 async function startNav(i){
   const dest = STOPS[i];
   paintNav({loading:dest.name});
@@ -1371,26 +1426,14 @@ async function startNav(i){
   try{
     const url = "https://router.project-osrm.org/route/v1/driving/"
       + me.lng+","+me.lat+";"+dest.lng+","+dest.lat
-      + "?overview=full&geometries=geojson&steps=true";
+      + "?overview=full&geometries=geojson&steps=true&alternatives=2";
     const j = await (await fetch(url)).json();
-    const r = j.routes && j.routes[0];
-    if(!r) throw new Error("no route");
-    const line = r.geometry.coordinates.map(c => [c[1], c[0]]);
-    // Distance from the start of the line to each of its points, so "how far
-    // to the next turn" can follow the road instead of cutting across it.
-    const along = [0];
-    for(let i=1; i<line.length; i++) along[i] = along[i-1] + metres(line[i-1], line[i]);
+    if(!j.routes || !j.routes.length) throw new Error("no route");
     nav = {
-      dest, steps: r.legs[0].steps, idx: 0, said: {}, line, along,
-      // which point on the line each maneuver happens at
-      stepAt: r.legs[0].steps.map(st => {
-        const p = [st.maneuver.location[1], st.maneuver.location[0]];
-        let best = 0, bd = Infinity;
-        for(let i=0; i<line.length; i++){ const d = metres(p, line[i]); if(d < bd){ bd = d; best = i; } }
-        return best;
-      }),
-      total: r.distance, eta: r.duration, layer: null, meMark: null, off: 0,
+      dest, routes: j.routes.map(parseRoute), active: 0,
+      layer: null, meMark: null, last: [me.lat, me.lng],
     };
+    Object.assign(nav, pickRoute(0));
   }catch(e){
     nav = null; paintNav();
     await ui.alert("Could not work out a route", "Try again, or use the Maps link instead.");
@@ -1419,6 +1462,7 @@ async function stopNav(){
 function navTick(lat, lng){
   if(!nav) return;
   const here = [lat, lng];
+  nav.last = here;
 
   // Where are we on the line, and how far off it? One pass gives both.
   let cur = 0, offBy = Infinity;
@@ -1552,6 +1596,15 @@ function paintNav(opt){
         <span>${esc(nav.dest.name)} · ${far(n.left ?? nav.total)} left · ${mins(n.eta ?? nav.eta)}</span>
         <button onclick="stopNav()">Stop</button>
       </div>
+      ${nav.routes.length < 2 ? "" : `<div class="navalt">
+        ${nav.routes.map((r,k)=>{
+          const slower = Math.round((r.eta - nav.routes[0].eta)/60);
+          return `<button class="${k===nav.active?"on":""}" onclick="useRoute(${k})">
+            ${k===0 ? "Fastest" : (r.via ? esc(shortRoad(r.via)) : "Other way")}
+            · ${mins(r.eta)}${k>0 && slower>0 ? " (+"+slower+" min)" : ""}
+          </button>`;
+        }).join("")}
+      </div>`}
     </div>`;
 }
 
@@ -1603,7 +1656,15 @@ function mountMap(){
 
   if(nav){
     nav.layer = L.layerGroup().addTo(lmap);
-    L.polyline(nav.line, {color:"#1a73e8", weight:6, opacity:.85}).addTo(nav.layer);
+    // Alternatives first and faded, so the one being followed sits on top.
+    nav.routes.forEach((r, k) => {
+      if(k === nav.active) return;
+      L.polyline(r.line, {color:"#94a3b8", weight:5, opacity:.9}).addTo(nav.layer);
+      // a fat invisible line makes it tappable with a thumb
+      L.polyline(r.line, {color:"#000", weight:22, opacity:0, interactive:true})
+        .addTo(nav.layer).on("click", () => useRoute(k));
+    });
+    L.polyline(nav.line, {color:"#1a73e8", weight:6, opacity:.9}).addTo(nav.layer);
     nav.meMark = null;
   }
 
@@ -1636,6 +1697,8 @@ function viewRoute(){
       <span><i style="background:${BRAND}"></i>Stops</span>
       <span><i style="background:#64748b"></i>Places to see</span>
       <span><i style="background:${LIVE}"></i>People, live</span>
+      ${nav?`<span><i style="background:#1a73e8"></i>Your route</span>
+             <span><i style="background:#94a3b8"></i>Other way — tap it to switch</span>`:""}
     </div>
     <div id="livelist">${liveListHTML()}</div>
   </section>
