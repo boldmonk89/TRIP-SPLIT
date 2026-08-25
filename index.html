@@ -108,20 +108,7 @@
   .daybar span{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--dim)}
 
   /* settlement */
-  .pay{border-top:1px solid var(--line);padding:16px 0}
-  .pay:first-child{border-top:0;padding-top:0}
-  .payline{display:flex;align-items:center;gap:11px}
-  .payline .who{font-size:16px;font-weight:700;letter-spacing:-.02em}
-  .payline .amt{margin-left:auto;font-size:17px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
-  .payline .amt.zero{font-size:13.5px;font-weight:600;color:var(--pos);letter-spacing:0}
-  .owe{margin:12px 0 0 47px}
-  .oweline{display:flex;align-items:baseline;gap:8px}
-  .oweline .arrow{color:var(--faint);font-size:13px}
-  .oweline .who2{font-size:14.5px;font-weight:600}
-  .oweline .amt2{margin-left:auto;font-size:15.5px;font-weight:700;font-variant-numeric:tabular-nums}
-  .why{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
-  .why span{font-size:11.5px;font-weight:600;color:var(--dim);background:var(--bg);
-    border-radius:100px;padding:5px 11px}
+  .arrow{color:var(--faint);font-weight:400}
   .settled{display:flex;align-items:center;gap:10px;padding:13px 0;border-top:1px solid var(--line);
     font-size:14px;color:var(--dim)}
   .settled:first-child{border-top:0}
@@ -268,7 +255,8 @@ const draftTotal = () => FRIENDS.reduce((s,f)=>s+Math.round(num(state.draft[f]))
 // ---- session ----
 // One key in localStorage is the whole login: the owner secret for me, a member
 // token for everyone else. The server decides which it is; the app never does.
-const KK = "tripsplit5:key", CK = "tripsplit5:cache", JK = "tripsplit5:join", MK = "tripsplit5:migrated";
+const KK = "tripsplit5:key", CK = "tripsplit5:cache", JK = "tripsplit5:join",
+      MK = "tripsplit5:migrated", IK = "tripsplit5:installed";
 let KEY = null;
 
 function ls(k, v){
@@ -592,7 +580,7 @@ function viewLog(t){
 
     <div class="opts" style="margin-top:18px">
       <button class="opt ${state.mode==="equal"?"on":""}" onclick="setMode('equal')">Split equally</button>
-      <button class="opt ${state.mode==="each"?"on":""}" onclick="setMode('each')">Each his own</button>
+      <button class="opt ${state.mode==="each"?"on":""}" onclick="setMode('each')">Each pays own</button>
     </div>
 
     ${state.mode==="equal" ? `
@@ -655,32 +643,37 @@ function viewLog(t){
 
 function viewSettle(t){
   const done=[...state.paybacks].reverse();
+  const square=FRIENDS.filter(f=>!t.transfers.some(x=>x.from===f));
   return `
   <section>
     <div class="shead"><div class="kicker">Who pays whom</div></div>
     ${t.total===0 ? `<div class="empty">Log a payment first and this fills itself in.</div>`
       : t.transfers.length===0 ? `<div class="allsquare"><b>All square.</b><span class="hint">Nobody owes anybody right now.</span></div>`
-      : `<div class="hint" style="margin:-8px 0 6px">${canEdit()?"Updated live, every time anything is logged. Tap a row once the cash actually changes hands.":"Updated the moment "+OWNER+" logs anything."}</div>
+      : `<div class="hint" style="margin:-8px 0 6px">${canEdit()?"One line per payment. Tap “mark paid” once the cash actually changes hands.":"Updated the moment "+OWNER+" logs anything."}</div>
         ${FRIENDS.map(f=>{
           const mine=t.transfers.filter(x=>x.from===f);
-          const owes=mine.reduce((s,x)=>s+x.amount,0);
-          return `<div class="pay">
-            <div class="payline">
+          if(!mine.length) return "";
+          // The name bar only earns its place when one person's money splits two ways.
+          const head = mine.length>1
+            ? `<div class="daybar"><b>${f} pays</b><span>${rupee(mine.reduce((s,x)=>s+x.amount,0))} in all</span></div>`
+            : "";
+          return head + mine.map(x=>{
+            const bits=Object.entries(x.why).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1])
+              .map(([k])=>CATS[k].toLowerCase()).join(", ");
+            return `<div class="row">
               <div class="ini">${initials(f)}</div>
-              <div class="who">${f}</div>
-              <div class="amt${owes===0?" zero":""}">${owes===0?"nothing to pay":rupee(owes)}</div>
-            </div>
-            ${mine.map(x=>{
-              const bits=Object.entries(x.why).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1])
-                .map(([k,v])=>`<span>${CATS[k]} ${rupee(v)}</span>`).join("");
-              return `<div class="owe">
-                <div class="oweline"><span class="arrow">→</span><span class="who2">${x.to}</span><span class="amt2">${rupee(x.amount)}</span></div>
-                ${bits?`<div class="why">${bits}</div>`:""}
-                ${canEdit()?`<button class="btn line" style="margin-top:10px" onclick="markPaid('${f}','${x.to}',${x.amount})">Paid ${x.to} ${rupee(x.amount)}</button>`:""}
-              </div>`;
-            }).join("")}
-          </div>`;
-        }).join("")}`}
+              <div class="body">
+                <div class="t">${f} <span class="arrow">→</span> ${x.to}</div>
+                <div class="s">${bits}</div>
+              </div>
+              <div>
+                <div class="amt">${rupee(x.amount)}</div>
+                ${canEdit()?`<button class="x" onclick="markPaid('${f}','${x.to}',${x.amount})">mark paid</button>`:""}
+              </div>
+            </div>`;
+          }).join("");
+        }).join("")}
+        ${square.length?`<div class="hint" style="margin-top:13px">Nothing to pay: ${square.join(", ")}.</div>`:""}`}
   </section>
 
   <section>
@@ -896,15 +889,19 @@ const isStandalone = matchMedia("(display-mode: standalone)").matches || navigat
 const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
 function renderInstall(){
   const slot=document.getElementById("install");
-  if(isStandalone){ slot.innerHTML=""; return; }
+  // Already on the home screen, or told once that it is — then stop offering.
+  // Android fires no event when the browser menu was used instead of the
+  // button, so "already done" is the only thing that reliably clears it.
+  if(isStandalone || ls(IK) || (!deferredPrompt && !isIOS)){ slot.innerHTML=""; return; }
   slot.innerHTML=`<section>
-    <div class="shead"><div class="kicker">Install</div></div>
+    <div class="shead">
+      <div class="kicker">Install</div>
+      <button class="link" onclick="ls(IK,'1');renderInstall()">Already done</button>
+    </div>
     ${deferredPrompt
       ? `<div class="hint">Runs fullscreen and keeps working offline.</div>
          <button class="btn" onclick="doInstall()">Add to home screen</button>`
-      : isIOS
-        ? `<div class="hint">Safari → Share → <b>Add to Home Screen</b>.</div>`
-        : `<div class="hint">Browser menu → <b>Add to Home screen</b>.</div>`}
+      : `<div class="hint">Safari → Share → <b>Add to Home Screen</b>.</div>`}
   </section>`;
 }
 function doInstall(){
@@ -913,7 +910,7 @@ function doInstall(){
   deferredPrompt.userChoice.finally(()=>{ deferredPrompt=null; renderInstall(); });
 }
 addEventListener("beforeinstallprompt",e=>{ e.preventDefault(); deferredPrompt=e; renderInstall(); });
-addEventListener("appinstalled",()=>{ deferredPrompt=null; renderInstall(); });
+addEventListener("appinstalled",()=>{ deferredPrompt=null; ls(IK,"1"); renderInstall(); });
 
 if("serviceWorker" in navigator){
   // Network first: online you always get the current build, offline you get the
