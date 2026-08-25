@@ -1278,12 +1278,27 @@ function phrase(step){
   }
 }
 
+function freshFix(){
+  return new Promise(res => {
+    if(!navigator.geolocation) return res(null);
+    navigator.geolocation.getCurrentPosition(
+      p => res({lat:p.coords.latitude, lng:p.coords.longitude}),
+      () => res(null),
+      {enableHighAccuracy:true, maximumAge:3000, timeout:8000});
+  });
+}
+
 async function startNav(i){
   const dest = STOPS[i];
-  const me = state.locations.find(p => p.name === myName());
-  if(!me){ await ui.alert("Waiting for your location", "Allow location access, then try again."); return; }
-
   paintNav({loading:dest.name});
+  // Ask the GPS directly; fall back to the last shared position only if it refuses.
+  const me = (await freshFix()) || state.locations.find(p => p.name === myName());
+  if(!me){
+    nav = null; paintNav();
+    await ui.alert("Waiting for your location", "Allow location access, then try again.");
+    return;
+  }
+
   try{
     const url = "https://router.project-osrm.org/route/v1/driving/"
       + me.lng+","+me.lat+";"+dest.lng+","+dest.lat
@@ -1317,6 +1332,7 @@ async function startNav(i){
   if(state.tab !== "route") setTab("route"); else mountMap();
   say("Starting. "+phrase(nav.steps[0]));
   navTick(me.lat, me.lng);
+  paintLive();
 }
 
 async function stopNav(){
@@ -1397,12 +1413,11 @@ function glideTo(to){
   }
   const t0 = performance.now(), dur = 950;
   cancelAnimationFrame(glideRAF);
+  lmap.panTo(to, {animate:true, duration:0.95, easeLinearity:0.6, noMoveStart:true});
   const step = now => {
     const t = Math.min(1, (now - t0) / dur);
     const e = t < .5 ? 2*t*t : 1 - Math.pow(-2*t+2, 2)/2;   // ease in out
-    const p = [from.lat + (to[0]-from.lat)*e, from.lng + (to[1]-from.lng)*e];
-    nav.meMark.setLatLng(p);
-    lmap.panTo(p, {animate:false});
+    nav.meMark.setLatLng([from.lat + (to[0]-from.lat)*e, from.lng + (to[1]-from.lng)*e]);
     if(t < 1) glideRAF = requestAnimationFrame(step);
   };
   glideRAF = requestAnimationFrame(step);
@@ -1454,7 +1469,9 @@ function mountMap(){
   if(!el || typeof L === "undefined") return;
   if(lmap){ lview = {c:lmap.getCenter(), z:lmap.getZoom()}; lmap.remove(); lmap = null; }
 
-  lmap = L.map(el, {attributionControl:false});
+  // Extra renderer padding: vectors are drawn well past the visible edge, so
+  // panning never reveals an unpainted part of the route.
+  lmap = L.map(el, {attributionControl:false, renderer:L.svg({padding:1})});
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom:18}).addTo(lmap);
 
   const big = STOPS.filter(x=>x.kind==="stop").map(x=>[x.lat, x.lng]);
