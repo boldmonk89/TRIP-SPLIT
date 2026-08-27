@@ -67,7 +67,7 @@
   .status.idle{background:var(--bg);color:var(--dim)}
 
   /* bottom tab bar */
-  nav{position:fixed;left:0;right:0;bottom:0;z-index:20;background:rgba(255,255,255,.72);
+  nav{position:fixed;left:0;right:0;bottom:0;z-index:20;background:rgba(255,255,255,.62);
     border-top:1px solid rgba(255,255,255,.6);display:flex;padding-bottom:env(safe-area-inset-bottom)}
   /* The tab bar was given the translucent background but not the blur, so the
      ledger behind it showed through sharp. Same treatment as the header. */
@@ -671,6 +671,23 @@ const ui = {
       </div>
     </div>`),
 
+  // asks for one line of text; resolves to the string, or null if cancelled
+  ask: (title, opt={}) => openModal(`
+    <div class="scrim mid" onclick="if(event.target===this)shutModal(null)">
+      <div class="dialog" role="dialog" aria-modal="true">
+        <div class="dTitle">${esc(title)}</div>
+        ${opt.body?`<div class="dBody">${esc(opt.body)}</div>`:""}
+        <label class="lbl" for="ask-in" style="margin-top:14px">${esc(opt.label||"")}</label>
+        <input class="f" id="ask-in" data-focus inputmode="${esc(opt.inputmode||"text")}"
+          placeholder="${esc(opt.placeholder||"")}"
+          onkeydown="if(event.key==='Enter')shutModal(document.getElementById('ask-in').value)">
+        <div class="dActs">
+          <button class="btn line" onclick="shutModal(null)">Cancel</button>
+          <button class="btn" onclick="shutModal(document.getElementById('ask-in').value)">${esc(opt.ok||"Save")}</button>
+        </div>
+      </div>
+    </div>`),
+
   // when the clipboard is blocked, show the text so it can be selected by hand
   show: (title, text) => openModal(`
     <div class="scrim mid" onclick="if(event.target===this)shutModal()">
@@ -845,6 +862,30 @@ function upiLink(to, amount){
 function setUpi(name, v){ state.upi = {...state.upi, [name]: v.trim()}; }
 function saveUpi(){ push("set_upi", state.upi); }
 
+// The person who got the money says so. Anyone can do this for their own
+// account - it is the one claim that is safe to take at face value - so it
+// does not go through owner_apply.
+async function gotPaid(from, amount){
+  const ref = await ui.ask("Got " + rupee(amount) + " from " + from + "?", {
+    body: "Only say yes once the money is actually in your account.",
+    label: "UPI reference number (optional)",
+    placeholder: "e.g. 523847119024",
+    inputmode: "numeric",
+    ok: "Yes, got it",
+  });
+  if(ref === null) return;
+  try{
+    const res = await rpc("confirm_payment",
+      {p_token:KEY, p_from:from, p_amount:Math.round(amount), p_ref:ref || null});
+    if(res.error){ await ui.alert(res.error); return; }
+    await refreshQuiet();
+    toast("Recorded");
+  }catch(e){
+    await ui.alert("No signal", "Try again once you are back online.");
+  }
+  render();
+}
+
 // ---- invites ----
 const inviteLink = token => location.origin + location.pathname + "?join=" + token;
 
@@ -960,6 +1001,9 @@ async function doJoin(){
 
 // ---- share ----
 function dayKey(ts){ return new Date(ts).toLocaleDateString("en-IN",{day:"numeric",month:"short"}); }
+// A settled payment needs the day and the time, not just the day.
+const when = ts => new Date(ts).toLocaleString("en-IN",
+  {day:"numeric", month:"short", hour:"numeric", minute:"2-digit"});
 
 // WhatsApp uses a proportional font, so padded columns never line up. Every
 // line here stands on its own instead, with the headings carrying the shape.
@@ -1135,7 +1179,7 @@ function viewMine(t){
   <section>
     <div class="shead"><div class="kicker">You</div></div>
     ${owe.length ? `
-      <div class="hint" style="margin:-8px 0 10px">You have to pay ${rupee(owe.reduce((s,x)=>s+x.amount,0))}</div>
+      <div class="hint" style="margin:-8px 0 10px">You have to pay ${rupee(owe.reduce((s,x)=>s+x.amount,0))}. They confirm it once it lands.</div>
       ${owe.map(x=>{
         const link = upiLink(x.to, x.amount);
         return `<div class="row">
@@ -1149,7 +1193,6 @@ function viewMine(t){
             <div class="amt">${rupee(x.amount)}</div>
             ${link ? `<a class="go" href="${link}">Pay ${esc(x.to)}</a>`
                    : `<span class="s">no UPI id</span>`}
-            ${canEdit()?`<button class="x" onclick="markPaid('${me}','${x.to}',${x.amount})">mark paid</button>`:""}
           </div>
         </div>`;
       }).join("")}` : ""}
@@ -1161,7 +1204,10 @@ function viewMine(t){
           <div class="t">${esc(x.from)}</div>
           <div class="s">owes you</div>
         </div>
-        <div class="amt">${rupee(x.amount)}</div>
+        <div class="acts">
+          <div class="amt">${rupee(x.amount)}</div>
+          <button class="go" onclick="gotPaid(${jq(x.from)},${x.amount})">Got it</button>
+        </div>
       </div>`).join("")}` : ""}
   </section>`;
 }
@@ -1242,10 +1288,15 @@ function viewSettle(t){
   ${done.length?`
   <section>
     <div class="shead"><div class="kicker">Already paid back</div></div>
-    ${done.map(p=>`<div class="settled">
-      <span>${p.from} → ${p.to}</span>
-      <span class="amt">${rupee(p.amount)}</span>
-      ${canEdit()?`<button class="x" style="margin-left:12px" onclick="delPayback('${p.id}')">undo</button>`:""}
+    ${done.map(p=>`<div class="row">
+      <div class="body">
+        <div class="t" style="font-weight:500">${esc(p.from)} → ${esc(p.to)}</div>
+        <div class="s">${when(p.ts)}${p.ref?` · ref ${esc(p.ref)}`:""}${p.by?` · confirmed by ${esc(p.by)}`:""}</div>
+      </div>
+      <div>
+        <div class="amt">${rupee(p.amount)}</div>
+        ${canEdit()?`<button class="x" onclick="delPayback('${p.id}')">undo</button>`:""}
+      </div>
     </div>`).join("")}
   </section>`:""}`;
 }
