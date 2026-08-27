@@ -533,6 +533,14 @@ function applyLocally(op, d){
 async function push(op, data){
   if(!canEdit()) return false;
   const d = data || {};
+
+  // Cancel anything queued that this write undoes, before it can be replayed.
+  if(op === "del_expense" || op === "del_payback"){
+    const add = op === "del_expense" ? "add_expense" : "add_payback";
+    setQueue(queue().filter(it => !(it.op === add && String(it.data.id) === String(d.id))));
+  }
+  if(op === "reset") setQueue(queue().filter(it => !/^add_/.test(it.op)));
+
   try{
     const res = await rpc("owner_apply", {p_secret:KEY, p_op:op, p_data:d});
     if(res.error){ await ui.alert(res.error); return false; }
@@ -551,6 +559,29 @@ async function push(op, data){
   }finally{
     render();
   }
+}
+
+// If something in there is wrong, you need to be able to see it and bin it.
+async function showQueue(){
+  const q = queue();
+  if(!q.length) return;
+  const label = it => {
+    const d = it.data || {};
+    if(it.op === "add_expense") return "add " + (d.desc || "?") + " " + rupee(amtOf(d));
+    if(it.op === "add_payback") return "payment " + d.from + " to " + d.to + " " + rupee(d.amount);
+    if(it.op === "del_expense" || it.op === "del_payback") return "a deletion";
+    if(it.op === "set_plan") return "trip plan";
+    if(it.op === "set_upi")  return "UPI ids";
+    if(it.op === "reset")    return "clear the ledger";
+    return it.op;
+  };
+  const drop = await ui.confirm(
+    q.length + " change" + (q.length > 1 ? "s" : "") + " waiting for signal", {
+      body: q.map(label).join(", ")
+        + ". These go up on their own once you have signal. Throw them away only if something here is wrong.",
+      ok: "Throw away", danger: true,
+    });
+  if(drop){ setQueue([]); await refreshQuiet(); toast("Discarded"); render(); }
 }
 
 // Send what is waiting, oldest first, stopping at the first one that cannot go.
@@ -2035,7 +2066,8 @@ function render(){
   updateStatus(t);
   const waiting = queue().length;
   rl.innerHTML = `<b>${esc(canEdit() ? OWNER : (state.me||"Guest"))}</b>`
-    + (waiting ? ` · <span style="color:var(--neg)">${waiting} waiting for signal</span>` : "");
+    + (waiting ? ` · <button class="x" style="color:var(--neg);padding:2px 0"
+         onclick="showQueue()">${waiting} waiting for signal</button>` : "");
   ft.textContent = "";
   document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on", b.dataset.tab===state.tab));
   document.getElementById("view").innerHTML =
