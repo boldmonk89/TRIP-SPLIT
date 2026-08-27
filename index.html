@@ -59,10 +59,21 @@
   @supports (backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px)){
     header{-webkit-backdrop-filter:saturate(190%) blur(26px);backdrop-filter:saturate(190%) blur(26px)}
   }
-  header h1{font-size:26px;font-weight:700;letter-spacing:-.035em}
-  .trip{font-size:14px;color:var(--dim);margin-top:1px}
-  .status{margin-top:15px;display:inline-flex;align-items:center;gap:7px;border-radius:100px;
+  /* Title and who you are share a line; the route and the running total sit
+     under it and fold away on scroll, the way a large title does on iOS. */
+  .hrow{display:flex;align-items:baseline;gap:12px}
+  header h1{font-size:26px;font-weight:700;letter-spacing:-.035em;
+    transition:font-size var(--t)}
+  .trip{font-size:13.5px;color:var(--dim);margin-top:2px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .status{margin-top:12px;display:inline-flex;align-items:center;gap:7px;border-radius:100px;
     padding:8px 15px;font-size:13.5px;font-weight:600;background:var(--tint-brand);color:var(--brand)}
+  .trip,.status{transition:opacity 160ms ease, max-height 220ms ease, margin-top 220ms ease}
+
+  header.tight{padding:11px 0 10px}
+  header.tight h1{font-size:19px}
+  header.tight .trip,header.tight .status{
+    opacity:0;max-height:0;margin-top:0;overflow:hidden;pointer-events:none}
   .status.ok{background:var(--tint-pos);color:var(--pos)}
   .status.idle{background:var(--bg);color:var(--dim)}
 
@@ -90,8 +101,11 @@
   @supports (backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px)){
     section{-webkit-backdrop-filter:saturate(190%) blur(26px);backdrop-filter:saturate(190%) blur(26px)}
   }
-  .shead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
-  .kicker{font-size:17px;font-weight:700;letter-spacing:-.02em;color:var(--ink)}
+  .shead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+  .kicker{font-size:16px;font-weight:700;letter-spacing:-.02em;color:var(--ink)}
+  /* The line under a card heading gives every section the same opening beat. */
+  section>.shead{padding-bottom:12px;border-bottom:1px solid var(--line)}
+  section>.shead+.hint{margin-top:12px}
   .hint{font-size:13.5px;color:var(--dim);line-height:1.5}
   .hint b{color:var(--ink);font-weight:600}
 
@@ -244,7 +258,7 @@
   #map{height:340px;border-radius:12px;margin-bottom:14px;background:var(--bg);z-index:0}
   .leaflet-container{font:inherit}
   .leaflet-popup-content{font-size:13px;line-height:1.45;margin:10px 12px}
-  .maplegend{display:flex;flex-wrap:wrap;gap:14px;margin:-8px 0 4px;font-size:12px;color:var(--dim)}
+  .maplegend{display:flex;flex-wrap:wrap;gap:12px 16px;margin:14px 0 0;font-size:11.5px;color:var(--dim)}
   .maplegend i{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:5px}
   .leg{position:relative;padding:0 0 0 28px}
   .leg::before{content:"";position:absolute;left:7px;top:6px;bottom:-6px;width:2px;background:var(--line)}
@@ -318,19 +332,21 @@
   .warn{background:var(--tint-neg);color:var(--neg)}
   .warn b{color:var(--neg)}
   footer{padding:4px 0 8px;font-size:12.5px;color:var(--faint);text-align:center}
-  .role{margin-top:9px;font-size:12.5px;color:var(--dim)}
+  .role{margin-left:auto;font-size:12.5px;color:var(--dim);white-space:nowrap}
   .role b{color:var(--ink);font-weight:600}
   .acts{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
 </style>
 </head>
 <body>
 
-<header>
+<header id="top">
   <div class="wrap">
-    <h1>Trip Split</h1>
+    <div class="hrow">
+      <h1>Trip Split</h1>
+      <div class="role" id="role"></div>
+    </div>
     <p class="trip" id="trip"></p>
     <div class="status" id="status"></div>
-    <div class="role" id="role"></div>
   </div>
 </header>
 
@@ -1258,9 +1274,10 @@ function viewTrip(t){
   return `
   <section>
     <div class="shead">
-      <div class="kicker">Projection · not counted</div>
+      <div class="kicker">Cost estimate</div>
       <button class="link" onclick="togglePlan()">${state.showPlan?"Hide":"Show"}</button>
     </div>
+    ${state.showPlan?"":`<div class="hint" style="margin:0">Car, fuel and toll before anyone pays. Never counted in anyone's balance.</div>`}
     ${state.showPlan && !canEdit() ? `<div class="note" style="margin-top:16px">${planNoteHTML()}</div>` : ""}
     ${state.showPlan && canEdit()?`
     <div class="duo" style="margin-top:18px">
@@ -1869,13 +1886,17 @@ function viewRoute(){
     </div>
     <div id="map"></div>
     <div class="mapbar" id="mapbar">${mapBarHTML()}</div>
-    <div class="maplegend" style="margin-top:12px">
+    <div class="maplegend">
       <span><i style="background:${BRAND}"></i>Stops</span>
       <span><i style="background:#64748b"></i>Places to see</span>
       <span><i style="background:${LIVE}"></i>People, live</span>
       ${nav?`<span><i style="background:#1a73e8"></i>Your route</span>
              <span><i style="background:#94a3b8"></i>Other way — tap it to switch</span>`:""}
     </div>
+  </section>
+
+  <section>
+    <div class="shead"><div class="kicker">Where everyone is</div></div>
     <div id="livelist">${liveListHTML()}</div>
   </section>
 
@@ -1931,7 +1952,6 @@ function liveListHTML(){
   const live = [...state.locations].sort((a,b)=>b.updatedAt-a.updatedAt);
   const me   = myName();
   return `
-    <div class="shead" style="margin:18px 0 2px"><div class="kicker" style="font-size:15px">Where everyone is</div></div>
     ${!me ? ""
       : state.sharing
         ? `<div class="live"><span class="pulse"></span>Yours is on · only this group sees it
@@ -2013,6 +2033,16 @@ function render(){
   if(state.tab==="route") mountMap();
 }
 document.querySelectorAll("nav button").forEach(b=>b.addEventListener("click",()=>setTab(b.dataset.tab)));
+
+// The full header is worth a quarter of a phone screen, so it only keeps that
+// while you are at the top. A little hysteresis stops it flickering on and off
+// when a scroll lands right on the threshold.
+let tight = false;
+addEventListener("scroll", () => {
+  const y = scrollY;
+  if(y > 46 && !tight){ tight = true; document.getElementById("top").classList.add("tight"); }
+  else if(y < 18 && tight){ tight = false; document.getElementById("top").classList.remove("tight"); }
+}, {passive:true});
 
 // ---- add to home screen ----
 let deferredPrompt=null;
