@@ -464,7 +464,7 @@ let state = {
   desc:"", amt:"",          // kept here so a re-render cannot throw them away
 
   // who is looking: "owner" can change things, "viewer" can only read
-  role:null, me:null, members:[], upi:{}, locations:[],
+  role:null, me:null, meFriend:null, members:[], upi:{}, locations:[],
   sharing:false, geoWatch:null,
   gate:"loading",           // null once we have a session; otherwise which screen to show
   gateMsg:"", joinToken:null, showOwnerLink:false,
@@ -501,6 +501,7 @@ function applyLedger(d, cache){
   state.paybacks = d.paybacks || [];
   state.members  = d.members  || [];
   state.upi      = d.upi      || {};
+  state.meFriend = d.meFriend || null;
   state.locations= d.locations|| [];
   state.plan     = {...PLAN, rate:CAR_RATE, days:CAR_DAYS, ...(d.plan || {})};
   state.gate     = null;
@@ -869,7 +870,10 @@ function waInvite(name, token){
 // switch it on. The browser still asks each person for permission the first
 // time - that prompt cannot be skipped, and should not be. Turning it off
 // deletes the row on the server, so it is a real stop, not just a local flag.
+// Two different names for the same person: locations are stored under the
+// name they typed, the ledger is keyed by the fixed friend list.
 const myName = () => canEdit() ? OWNER : (state.me || "");
+const whoAmI = () => canEdit() ? OWNER : (state.meFriend || "");
 
 function startShare(silent){
   if(!silent) ls(SHK, "");
@@ -1114,12 +1118,61 @@ function viewLog(t){
 }
 
 
+// What this particular person has to do about it. Everyone sees the whole
+// table below; this is the part that is theirs to act on.
+function viewMine(t){
+  const me = whoAmI();
+  if(!FRIENDS.includes(me)) return "";
+  const owe = t.transfers.filter(x => x.from === me);
+  const get = t.transfers.filter(x => x.to === me);
+  if(!owe.length && !get.length) return `
+  <section>
+    <div class="shead"><div class="kicker">You</div></div>
+    <div class="empty">You are all settled up.</div>
+  </section>`;
+
+  return `
+  <section>
+    <div class="shead"><div class="kicker">You</div></div>
+    ${owe.length ? `
+      <div class="hint" style="margin:-8px 0 10px">You have to pay ${rupee(owe.reduce((s,x)=>s+x.amount,0))}</div>
+      ${owe.map(x=>{
+        const link = upiLink(x.to, x.amount);
+        return `<div class="row">
+          <div class="ini">${initials(x.to)}</div>
+          <div class="body">
+            <div class="t">${esc(x.to)}</div>
+            <div class="s">${Object.entries(x.why).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1])
+              .map(([k])=>CATS[k].toLowerCase()).join(", ")}</div>
+          </div>
+          <div class="acts">
+            <div class="amt">${rupee(x.amount)}</div>
+            ${link ? `<a class="go" href="${link}">Pay ${esc(x.to)}</a>`
+                   : `<span class="s">no UPI id</span>`}
+            ${canEdit()?`<button class="x" onclick="markPaid('${me}','${x.to}',${x.amount})">mark paid</button>`:""}
+          </div>
+        </div>`;
+      }).join("")}` : ""}
+    ${get.length ? `
+      <div class="hint" style="margin:${owe.length?"16px":"-8px"} 0 10px">You get back ${rupee(get.reduce((s,x)=>s+x.amount,0))}</div>
+      ${get.map(x=>`<div class="row">
+        <div class="ini">${initials(x.from)}</div>
+        <div class="body">
+          <div class="t">${esc(x.from)}</div>
+          <div class="s">owes you</div>
+        </div>
+        <div class="amt">${rupee(x.amount)}</div>
+      </div>`).join("")}` : ""}
+  </section>`;
+}
+
 function viewSettle(t){
   const done=[...state.paybacks].reverse();
   const square=FRIENDS.filter(f=>!t.transfers.some(x=>x.from===f));
   return `
+  ${viewMine(t)}
   <section>
-    <div class="shead"><div class="kicker">Who pays whom</div></div>
+    <div class="shead"><div class="kicker">Everyone</div></div>
     ${t.total===0 ? `<div class="empty">Log a payment first and this fills itself in.</div>`
       : t.transfers.length===0 ? `<div class="allsquare"><b>No one has to pay anything.</b></div>`
       : `${FRIENDS.map(f=>{
@@ -1138,11 +1191,8 @@ function viewSettle(t){
                 <div class="t">${f} <span class="arrow">→</span> ${x.to}</div>
                 <div class="s">${bits}</div>
               </div>
-              <div class="acts">
+              <div>
                 <div class="amt">${rupee(x.amount)}</div>
-                ${upiLink(x.to, x.amount)
-                  ? `<a class="go" style="padding:6px 13px;font-size:12.5px"
-                        href="${upiLink(x.to, x.amount)}">Pay ${esc(x.to)}</a>` : ""}
                 ${canEdit()?`<button class="x" onclick="markPaid('${f}','${x.to}',${x.amount})">mark paid</button>`:""}
               </div>
             </div>`;
