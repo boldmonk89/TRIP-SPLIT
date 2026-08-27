@@ -34,6 +34,10 @@
   body{
     font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
     background:var(--bg);color:var(--ink);line-height:1.5;font-size:15px;
+    background-image:
+      radial-gradient(60rem 40rem at 12% -8%, rgba(230,30,77,.09), transparent 60%),
+      radial-gradient(48rem 34rem at 92% 4%, rgba(4,120,87,.08), transparent 60%);
+    background-attachment:fixed;
     -webkit-font-smoothing:antialiased;
     padding-bottom:calc(78px + env(safe-area-inset-bottom));
   }
@@ -50,7 +54,11 @@
   .n{font-variant-numeric:tabular-nums}
 
   /* header */
-  header{background:var(--card);padding:22px 0 20px;border-bottom:1px solid var(--line)}
+  header{background:rgba(255,255,255,.7);padding:22px 0 20px;border-bottom:1px solid rgba(255,255,255,.6);
+    position:sticky;top:0;z-index:18}
+  @supports (backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px)){
+    header{-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px)}
+  }
   header h1{font-size:26px;font-weight:700;letter-spacing:-.035em}
   .trip{font-size:14px;color:var(--dim);margin-top:1px}
   .status{margin-top:15px;display:inline-flex;align-items:center;gap:7px;border-radius:100px;
@@ -59,7 +67,7 @@
   .status.idle{background:var(--bg);color:var(--dim)}
 
   /* bottom tab bar */
-  nav{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--card);
+  nav{position:fixed;left:0;right:0;bottom:0;z-index:20;background:rgba(255,255,255,.72);
     border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom)}
   nav button{flex:1;border:0;background:none;padding:10px 0 9px;display:flex;flex-direction:column;
     align-items:center;gap:4px;font-size:10.5px;font-weight:600;color:var(--dim);letter-spacing:.01em}
@@ -69,8 +77,14 @@
 
   /* cards */
   main{padding-top:16px}
-  section{background:var(--card);border:1px solid var(--line);border-radius:16px;
-    padding:20px;margin-bottom:16px}
+  /* Frosted cards. Any browser without backdrop-filter simply gets the solid
+     colour underneath, which is what the app looked like before. */
+  section{background:rgba(255,255,255,.72);border:1px solid rgba(255,255,255,.6);
+    border-radius:18px;padding:20px;margin-bottom:16px;
+    box-shadow:0 1px 1px rgba(15,23,42,.03), 0 8px 24px -12px rgba(15,23,42,.12)}
+  @supports (backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px)){
+    section{-webkit-backdrop-filter:saturate(180%) blur(18px);backdrop-filter:saturate(180%) blur(18px)}
+  }
   .shead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
   .kicker{font-size:17px;font-weight:700;letter-spacing:-.02em;color:var(--ink)}
   .hint{font-size:13.5px;color:var(--dim);line-height:1.5}
@@ -101,7 +115,7 @@
   .link{border:0;background:none;padding:7px 0;font-size:13.5px;font-weight:600;color:var(--ink);
     text-decoration:underline;text-underline-offset:3px;min-height:24px}
   .opts{display:flex;flex-wrap:wrap;gap:8px}
-  .opt{border:1px solid var(--edge);background:var(--card);border-radius:100px;padding:9px 16px;
+  .opt{border:1px solid rgba(15,23,42,.14);background:rgba(255,255,255,.6);border-radius:100px;padding:9px 16px;
     font-size:14px;font-weight:600;color:var(--ink)}
   .opt.on{border-color:var(--ink);background:var(--ink);color:#fff}
 
@@ -137,19 +151,25 @@
 
   /* dialogs, sheets, toast */
   body.locked{overflow:hidden}
-  .scrim{position:fixed;inset:0;z-index:50;background:rgba(15,23,42,.45);
+  .scrim{position:fixed;inset:0;z-index:50;background:rgba(15,23,42,.35);
     display:flex;align-items:flex-end;justify-content:center;animation:fadeIn 150ms ease}
+  @supports (backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px)){
+    .scrim{-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+    .sheet,.dialog{-webkit-backdrop-filter:saturate(180%) blur(24px);backdrop-filter:saturate(180%) blur(24px)}
+  }
   .scrim.mid{align-items:center;padding:20px}
-  .sheet{width:100%;max-width:540px;background:var(--card);border-radius:20px 20px 0 0;
-    padding:6px 0 max(10px,env(safe-area-inset-bottom));animation:slideUp 220ms cubic-bezier(.4,0,.2,1)}
+  .sheet{width:100%;max-width:540px;background:rgba(255,255,255,.86);border-radius:22px 22px 0 0;
+    padding:6px 0 max(10px,env(safe-area-inset-bottom));animation:slideUp 220ms cubic-bezier(.4,0,.2,1);
+    border-top:1px solid rgba(255,255,255,.7)}
   .sheetHead{font-size:12.5px;font-weight:600;color:var(--dim);padding:16px 22px 8px}
   .sheetItem{display:flex;align-items:center;width:100%;border:0;background:none;
     padding:15px 22px;font-size:16px;text-align:left;color:var(--ink);min-height:44px}
   .sheetItem.on{font-weight:700}
   .sheetItem .tick{margin-left:auto;color:var(--brand);font-weight:700;visibility:hidden}
   .sheetItem.on .tick{visibility:visible}
-  .dialog{width:100%;max-width:400px;background:var(--card);border-radius:18px;padding:22px;
-    animation:popIn 170ms cubic-bezier(.4,0,.2,1)}
+  .dialog{width:100%;max-width:400px;background:rgba(255,255,255,.9);border-radius:20px;padding:22px;
+    animation:popIn 170ms cubic-bezier(.4,0,.2,1);border:1px solid rgba(255,255,255,.7);
+    box-shadow:0 24px 60px -20px rgba(15,23,42,.4)}
   .dTitle{font-size:17px;font-weight:700;letter-spacing:-.02em;line-height:1.35}
   .dBody{font-size:14px;color:var(--dim);margin-top:8px;line-height:1.5}
   .dPre{font-size:12.5px;color:var(--dim);margin-top:12px;line-height:1.5;
@@ -158,7 +178,8 @@
   .dActs .btn{margin-top:0}
   .btn.danger{background:var(--neg)}
   #toast{position:fixed;left:50%;bottom:calc(86px + env(safe-area-inset-bottom));z-index:60;
-    background:var(--ink);color:#fff;border-radius:100px;padding:11px 20px;font-size:13.5px;
+    background:rgba(15,23,42,.88);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+    color:#fff;border-radius:100px;padding:11px 20px;font-size:13.5px;
     font-weight:600;opacity:0;pointer-events:none;transform:translateX(-50%) translateY(10px);
     transition:opacity var(--t),transform var(--t)}
   #toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -173,7 +194,11 @@
     transform:rotate(45deg) translateY(-2px)}
 
   /* navigation */
-  .navbar{background:var(--ink);color:#fff;border-radius:16px;padding:17px 19px;margin-bottom:16px}
+  .navbar{background:rgba(15,23,42,.86);color:#fff;border-radius:18px;padding:17px 19px;margin-bottom:16px;
+    border:1px solid rgba(255,255,255,.1);box-shadow:0 12px 32px -16px rgba(15,23,42,.5)}
+  @supports (backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px)){
+    .navbar{-webkit-backdrop-filter:saturate(160%) blur(18px);backdrop-filter:saturate(160%) blur(18px)}
+  }
   .navtop{display:flex;align-items:flex-start;gap:14px}
   .navicon{width:40px;height:40px;flex-shrink:0;stroke:#fff;fill:none;stroke-width:2;
     stroke-linecap:round;stroke-linejoin:round}
@@ -430,7 +455,7 @@ let state = {
   desc:"", amt:"",          // kept here so a re-render cannot throw them away
 
   // who is looking: "owner" can change things, "viewer" can only read
-  role:null, me:null, members:[], locations:[],
+  role:null, me:null, members:[], upi:{}, locations:[],
   sharing:false, geoWatch:null,
   gate:"loading",           // null once we have a session; otherwise which screen to show
   gateMsg:"", joinToken:null, showOwnerLink:false,
@@ -450,7 +475,7 @@ const draftTotal = () => FRIENDS.reduce((s,f)=>s+Math.round(num(state.draft[f]))
 const KK = "tripsplit5:key", CK = "tripsplit5:cache", JK = "tripsplit5:join",
       MK = "tripsplit5:migrated", IK = "tripsplit5:installed",
       SHK = "tripsplit5:noshare", RK = "tripsplit5:roadline2", TK = "tripsplit5:tab",
-      MSK = "tripsplit5:mapstyle";
+      MSK = "tripsplit5:mapstyle", QK = "tripsplit5:queue";
 let KEY = null;
 
 function ls(k, v){
@@ -466,28 +491,83 @@ function applyLedger(d, cache){
   state.expenses = d.expenses || [];
   state.paybacks = d.paybacks || [];
   state.members  = d.members  || [];
+  state.upi      = d.upi      || {};
   state.locations= d.locations|| [];
   state.plan     = {...PLAN, rate:CAR_RATE, days:CAR_DAYS, ...(d.plan || {})};
   state.gate     = null;
   if(cache !== false) ls(CK, JSON.stringify(d));
 }
 
-// Every change goes through here. Nothing is written locally first — if the
-// server did not take it, it did not happen, and the form keeps what you typed.
+// ---- writing, with the hills in mind ----
+// Up there the signal comes and goes. A failed write used to be lost and you
+// retyped it; now it waits in a queue on the phone and goes up on its own.
+// Only ops that are safe to replay are queued - an invite needs a token the
+// server generates, so those still need signal there and then.
+const QUEUEABLE = ["add_expense","del_expense","add_payback","del_payback","set_plan","set_upi","reset"];
+
+function queue(){ try{ return JSON.parse(ls(QK) || "[]"); }catch(e){ return []; } }
+function setQueue(q){ ls(QK, JSON.stringify(q)); }
+
+// What the server would have done, done locally, so the screen tells the truth
+// while the write is still waiting.
+function applyLocally(op, d){
+  if(op === "add_expense") state.expenses = [...state.expenses, d];
+  else if(op === "del_expense") state.expenses = state.expenses.filter(e => String(e.id) !== String(d.id));
+  else if(op === "add_payback") state.paybacks = [...state.paybacks, d];
+  else if(op === "del_payback") state.paybacks = state.paybacks.filter(p => String(p.id) !== String(d.id));
+  else if(op === "set_plan") state.plan = {...state.plan, ...d};
+  else if(op === "set_upi")  state.upi = {...d};
+  else if(op === "reset"){ state.expenses = []; state.paybacks = []; }
+}
+
 async function push(op, data){
   if(!canEdit()) return false;
+  const d = data || {};
   try{
-    const res = await rpc("owner_apply", {p_secret:KEY, p_op:op, p_data:data||{}});
+    const res = await rpc("owner_apply", {p_secret:KEY, p_op:op, p_data:d});
     if(res.error){ await ui.alert(res.error); return false; }
     applyLedger(res);
+    flushQueue();               // signal is clearly back
     return true;
   }catch(e){
-    await ui.alert("Not saved", "No signal. Try again once you are back online.");
-    return false;
+    if(!QUEUEABLE.includes(op)){
+      await ui.alert("Needs signal", "This one cannot wait offline. Try again when you are back online.");
+      return false;
+    }
+    setQueue([...queue(), {op, data:d}]);
+    applyLocally(op, d);
+    toast("No signal — saved on this phone, will sync");
+    return true;                // it counts as done: the form can clear
   }finally{
     render();
   }
 }
+
+// Send what is waiting, oldest first, stopping at the first one that cannot go.
+let flushing = false;
+async function flushQueue(){
+  if(flushing || !KEY || !canEdit()) return;
+  let q = queue();
+  if(!q.length) return;
+  flushing = true;
+  try{
+    while(q.length){
+      const item = q[0];
+      let res;
+      try{
+        res = await rpc("owner_apply", {p_secret:KEY, p_op:item.op, p_data:item.data});
+      }catch(e){ return; }                  // still offline; keep the rest
+      // A server-side refusal will refuse forever, so drop it rather than
+      // blocking everything behind it.
+      q = q.slice(1); setQueue(q);
+      if(!res.error) applyLedger(res);
+    }
+  }finally{
+    flushing = false;
+    render();
+  }
+}
+addEventListener("online", flushQueue);
 
 async function refresh(){
   const d = await rpc("get_ledger", {p_token:KEY});
@@ -742,6 +822,22 @@ async function resetAll(){
        ok:"Clear all", danger:true})) return;
   push("reset", {});
 }
+
+// ---- paying ----
+// upi:// opens whichever UPI app is installed with the amount already in it.
+// Android honours it from the browser; on iOS it depends on the app being
+// there, so the button only shows when we have an id to send to.
+function upiLink(to, amount){
+  const vpa = (state.upi || {})[to];
+  if(!vpa) return null;
+  return "upi://pay?pa=" + encodeURIComponent(vpa)
+       + "&pn=" + encodeURIComponent(to)
+       + "&am=" + Math.round(amount)
+       + "&cu=INR&tn=" + encodeURIComponent("Trip Split");
+}
+
+function setUpi(name, v){ state.upi = {...state.upi, [name]: v.trim()}; }
+function saveUpi(){ push("set_upi", state.upi); }
 
 // ---- invites ----
 const inviteLink = token => location.origin + location.pathname + "?join=" + token;
@@ -1028,8 +1124,11 @@ function viewSettle(t){
                 <div class="t">${f} <span class="arrow">→</span> ${x.to}</div>
                 <div class="s">${bits}</div>
               </div>
-              <div>
+              <div class="acts">
                 <div class="amt">${rupee(x.amount)}</div>
+                ${upiLink(x.to, x.amount)
+                  ? `<a class="go" style="padding:6px 13px;font-size:12.5px"
+                        href="${upiLink(x.to, x.amount)}">Pay ${esc(x.to)}</a>` : ""}
                 ${canEdit()?`<button class="x" onclick="markPaid('${f}','${x.to}',${x.amount})">mark paid</button>`:""}
               </div>
             </div>`;
@@ -1147,6 +1246,7 @@ function viewTrip(t){
     `:""}
   </section>
 
+  ${canEdit() ? viewUpi() : ""}
   ${canEdit() ? viewFriends() : ""}
 
   <section>
@@ -1158,6 +1258,21 @@ function viewTrip(t){
 // Owner-typed names end up inside onclick, so quote them properly.
 const jq = v => "'" + String(v).replace(/\\/g, "\\\\").replace(/'/g, "\\'") + "'";
 const ownerLink = () => location.origin + location.pathname + "?owner=" + KEY;
+
+function viewUpi(){
+  return `
+  <section>
+    <div class="shead"><div class="kicker">UPI ids</div></div>
+    <div class="hint" style="margin:-8px 0 14px">Put these in once and a Pay button appears next to every payment owed to that person, with the amount already filled in.</div>
+    ${FRIENDS.map(f=>`
+      <div style="margin-bottom:12px">
+        <label class="lbl" for="upi-${esc(f)}">${esc(f)}</label>
+        <input class="f" id="upi-${esc(f)}" inputmode="email" autocomplete="off"
+          placeholder="name@bank" value="${esc((state.upi||{})[f] || "")}"
+          oninput="setUpi(${jq(f)}, this.value)" onblur="saveUpi()">
+      </div>`).join("")}
+  </section>`;
+}
 
 function viewFriends(){
   // Everyone worth a link: the fixed five minus me, plus anyone already invited.
@@ -1810,7 +1925,9 @@ function render(){
 
   const t=calc();
   updateStatus(t);
-  rl.innerHTML = `<b>${esc(canEdit() ? OWNER : (state.me||"Guest"))}</b>`;
+  const waiting = queue().length;
+  rl.innerHTML = `<b>${esc(canEdit() ? OWNER : (state.me||"Guest"))}</b>`
+    + (waiting ? ` · <span style="color:var(--neg)">${waiting} waiting for signal</span>` : "");
   ft.textContent = "";
   document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on", b.dataset.tab===state.tab));
   document.getElementById("view").innerHTML =
@@ -1891,7 +2008,7 @@ async function boot(){
 
   try{
     await refresh();
-    if(canEdit()) await migrateLocal();
+    if(canEdit()){ await migrateLocal(); flushQueue(); }
     if(!ls(SHK)) startShare(true);
   }catch(e){
     // No signal. Keep showing the cached copy if there is one; say so if not.
