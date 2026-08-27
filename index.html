@@ -35,8 +35,8 @@
     font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
     background:var(--bg);color:var(--ink);line-height:1.5;font-size:15px;
     background-image:
-      radial-gradient(60rem 40rem at 12% -8%, rgba(230,30,77,.09), transparent 60%),
-      radial-gradient(48rem 34rem at 92% 4%, rgba(4,120,87,.08), transparent 60%);
+      radial-gradient(60rem 40rem at 12% -8%, rgba(230,30,77,.07), transparent 60%),
+      radial-gradient(48rem 34rem at 92% 4%, rgba(4,120,87,.06), transparent 60%);
     background-attachment:fixed;
     -webkit-font-smoothing:antialiased;
     padding-bottom:calc(78px + env(safe-area-inset-bottom));
@@ -54,10 +54,10 @@
   .n{font-variant-numeric:tabular-nums}
 
   /* header */
-  header{background:rgba(255,255,255,.7);padding:22px 0 20px;border-bottom:1px solid rgba(255,255,255,.6);
+  header{background:rgba(255,255,255,.66);padding:22px 0 20px;border-bottom:1px solid rgba(255,255,255,.5);
     position:sticky;top:0;z-index:18}
   @supports (backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px)){
-    header{-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px)}
+    header{-webkit-backdrop-filter:saturate(190%) blur(26px);backdrop-filter:saturate(190%) blur(26px)}
   }
   header h1{font-size:26px;font-weight:700;letter-spacing:-.035em}
   .trip{font-size:14px;color:var(--dim);margin-top:1px}
@@ -67,16 +67,16 @@
   .status.idle{background:var(--bg);color:var(--dim)}
 
   /* bottom tab bar */
-  nav{position:fixed;left:0;right:0;bottom:0;z-index:20;background:rgba(255,255,255,.62);
+  nav{position:fixed;left:0;right:0;bottom:0;z-index:20;background:rgba(255,255,255,.74);
     border-top:1px solid rgba(255,255,255,.6);display:flex;padding-bottom:env(safe-area-inset-bottom)}
   /* The tab bar was given the translucent background but not the blur, so the
      ledger behind it showed through sharp. Same treatment as the header. */
   @supports (backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px)){
-    nav{-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px)}
+    nav{-webkit-backdrop-filter:saturate(190%) blur(26px);backdrop-filter:saturate(190%) blur(26px)}
   }
   nav button{flex:1;border:0;background:none;padding:10px 0 9px;display:flex;flex-direction:column;
     align-items:center;gap:4px;font-size:10.5px;font-weight:600;color:var(--dim);letter-spacing:.01em}
-  nav button.on{color:var(--brand)}
+  nav button.on{color:#c2183f}   /* deeper than --brand: 10.5px labels need the full 4.5:1 */
   nav svg{width:23px;height:23px;stroke:currentColor;stroke-width:1.7;fill:none;
     stroke-linecap:round;stroke-linejoin:round}
 
@@ -84,11 +84,11 @@
   main{padding-top:16px}
   /* Frosted cards. Any browser without backdrop-filter simply gets the solid
      colour underneath, which is what the app looked like before. */
-  section{background:rgba(255,255,255,.72);border:1px solid rgba(255,255,255,.6);
-    border-radius:18px;padding:20px;margin-bottom:16px;
-    box-shadow:0 1px 1px rgba(15,23,42,.03), 0 8px 24px -12px rgba(15,23,42,.12)}
+  section{background:rgba(255,255,255,.58);border:1px solid rgba(255,255,255,.75);
+    border-radius:20px;padding:20px;margin-bottom:16px;
+    box-shadow:0 1px 1px rgba(15,23,42,.04), 0 10px 30px -14px rgba(15,23,42,.18)}
   @supports (backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px)){
-    section{-webkit-backdrop-filter:saturate(180%) blur(18px);backdrop-filter:saturate(180%) blur(18px)}
+    section{-webkit-backdrop-filter:saturate(190%) blur(26px);backdrop-filter:saturate(190%) blur(26px)}
   }
   .shead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
   .kicker{font-size:17px;font-weight:700;letter-spacing:-.02em;color:var(--ink)}
@@ -105,6 +105,8 @@
   .money span{font-size:15px;color:var(--dim);font-weight:600}
   .money input{flex:1;min-width:0;border:0;background:none;font-size:16px;font-weight:600;
     font-variant-numeric:tabular-nums;padding:14px 14px 14px 5px}
+  .money.big span{font-size:21px}
+  .money.big input{font-size:25px;font-weight:700;letter-spacing:-.02em;padding:14px 14px 14px 7px}
   .money input:focus{outline:none}
   .duo{display:flex;gap:10px}
   .duo>*{flex:1;min-width:0}
@@ -120,6 +122,10 @@
   .link{border:0;background:none;padding:7px 0;font-size:13.5px;font-weight:600;color:var(--ink);
     text-decoration:underline;text-underline-offset:3px;min-height:24px}
   .opts{display:flex;flex-wrap:wrap;gap:8px}
+  .opts.scroll{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;scroll-snap-type:x proximity;
+    -webkit-overflow-scrolling:touch;margin:0 -20px;padding:2px 20px}
+  .opts.scroll::-webkit-scrollbar{display:none}
+  .opts.scroll .opt{flex:0 0 auto;scroll-snap-align:start}
   .opt{border:1px solid rgba(15,23,42,.14);background:rgba(255,255,255,.6);border-radius:100px;padding:9px 16px;
     font-size:14px;font-weight:600;color:var(--ink)}
   .opt.on{border-color:var(--ink);background:var(--ink);color:#fff}
@@ -153,6 +159,13 @@
   .settled .amt{margin-left:auto;font-weight:700;font-variant-numeric:tabular-nums;color:var(--ink)}
   .allsquare{padding:34px 0;text-align:center}
   .allsquare b{display:block;font-size:17px;font-weight:700;margin-bottom:4px}
+
+  /* One photo of the trip behind the whole app, per tab. Faint enough to read
+     over, present enough that the frosted panels have something to blur. */
+  #shot{position:fixed;inset:0;z-index:-1;background-size:cover;background-position:center;
+    opacity:.62;transition:opacity 300ms ease}
+  #shot::after{content:"";position:absolute;inset:0;
+    background:linear-gradient(180deg, rgba(248,250,252,.32), rgba(248,250,252,.60) 50%, rgba(248,250,252,.80))}
 
   /* dialogs, sheets, toast */
   body.locked{overflow:hidden}
@@ -328,6 +341,7 @@
   <footer id="foot"></footer>
 </main>
 
+<div id="shot" aria-hidden="true"></div>
 <div id="modal"></div>
 <div id="toast" role="status" aria-live="polite"></div>
 
@@ -484,7 +498,7 @@ const draftTotal = () => FRIENDS.reduce((s,f)=>s+Math.round(num(state.draft[f]))
 const KK = "tripsplit5:key", CK = "tripsplit5:cache", JK = "tripsplit5:join",
       MK = "tripsplit5:migrated", IK = "tripsplit5:installed",
       SHK = "tripsplit5:noshare", RK = "tripsplit5:roadline2", TK = "tripsplit5:tab",
-      MSK = "tripsplit5:mapstyle", QK = "tripsplit5:queue";
+      MSK = "tripsplit5:mapstyle";
 let KEY = null;
 
 function ls(k, v){
@@ -508,107 +522,25 @@ function applyLedger(d, cache){
   if(cache !== false) ls(CK, JSON.stringify(d));
 }
 
-// ---- writing, with the hills in mind ----
-// Up there the signal comes and goes. A failed write used to be lost and you
-// retyped it; now it waits in a queue on the phone and goes up on its own.
-// Only ops that are safe to replay are queued - an invite needs a token the
-// server generates, so those still need signal there and then.
-const QUEUEABLE = ["add_expense","del_expense","add_payback","del_payback","set_plan","set_upi","reset"];
-
-function queue(){ try{ return JSON.parse(ls(QK) || "[]"); }catch(e){ return []; } }
-function setQueue(q){ ls(QK, JSON.stringify(q)); }
-
-// What the server would have done, done locally, so the screen tells the truth
-// while the write is still waiting.
-function applyLocally(op, d){
-  if(op === "add_expense") state.expenses = [...state.expenses, d];
-  else if(op === "del_expense") state.expenses = state.expenses.filter(e => String(e.id) !== String(d.id));
-  else if(op === "add_payback") state.paybacks = [...state.paybacks, d];
-  else if(op === "del_payback") state.paybacks = state.paybacks.filter(p => String(p.id) !== String(d.id));
-  else if(op === "set_plan") state.plan = {...state.plan, ...d};
-  else if(op === "set_upi")  state.upi = {...d};
-  else if(op === "reset"){ state.expenses = []; state.paybacks = []; }
-}
-
+// Every change goes through here. Nothing is written locally first - if the
+// server did not take it, it did not happen, and the form keeps what you typed.
+// (There was an offline queue here. It replayed a queued "add" after the row
+// had been deleted, so deleted expenses came back, and it was not worth the
+// trouble it caused.)
 async function push(op, data){
   if(!canEdit()) return false;
-  const d = data || {};
-
-  // Cancel anything queued that this write undoes, before it can be replayed.
-  if(op === "del_expense" || op === "del_payback"){
-    const add = op === "del_expense" ? "add_expense" : "add_payback";
-    setQueue(queue().filter(it => !(it.op === add && String(it.data.id) === String(d.id))));
-  }
-  if(op === "reset") setQueue(queue().filter(it => !/^add_/.test(it.op)));
-
   try{
-    const res = await rpc("owner_apply", {p_secret:KEY, p_op:op, p_data:d});
+    const res = await rpc("owner_apply", {p_secret:KEY, p_op:op, p_data:data||{}});
     if(res.error){ await ui.alert(res.error); return false; }
     applyLedger(res);
-    flushQueue();               // signal is clearly back
     return true;
   }catch(e){
-    if(!QUEUEABLE.includes(op)){
-      await ui.alert("Needs signal", "This one cannot wait offline. Try again when you are back online.");
-      return false;
-    }
-    setQueue([...queue(), {op, data:d}]);
-    applyLocally(op, d);
-    toast("No signal — saved on this phone, will sync");
-    return true;                // it counts as done: the form can clear
+    await ui.alert("Not saved", "No signal. Try again once you are back online.");
+    return false;
   }finally{
     render();
   }
 }
-
-// If something in there is wrong, you need to be able to see it and bin it.
-async function showQueue(){
-  const q = queue();
-  if(!q.length) return;
-  const label = it => {
-    const d = it.data || {};
-    if(it.op === "add_expense") return "add " + (d.desc || "?") + " " + rupee(amtOf(d));
-    if(it.op === "add_payback") return "payment " + d.from + " to " + d.to + " " + rupee(d.amount);
-    if(it.op === "del_expense" || it.op === "del_payback") return "a deletion";
-    if(it.op === "set_plan") return "trip plan";
-    if(it.op === "set_upi")  return "UPI ids";
-    if(it.op === "reset")    return "clear the ledger";
-    return it.op;
-  };
-  const drop = await ui.confirm(
-    q.length + " change" + (q.length > 1 ? "s" : "") + " waiting for signal", {
-      body: q.map(label).join(", ")
-        + ". These go up on their own once you have signal. Throw them away only if something here is wrong.",
-      ok: "Throw away", danger: true,
-    });
-  if(drop){ setQueue([]); await refreshQuiet(); toast("Discarded"); render(); }
-}
-
-// Send what is waiting, oldest first, stopping at the first one that cannot go.
-let flushing = false;
-async function flushQueue(){
-  if(flushing || !KEY || !canEdit()) return;
-  let q = queue();
-  if(!q.length) return;
-  flushing = true;
-  try{
-    while(q.length){
-      const item = q[0];
-      let res;
-      try{
-        res = await rpc("owner_apply", {p_secret:KEY, p_op:item.op, p_data:item.data});
-      }catch(e){ return; }                  // still offline; keep the rest
-      // A server-side refusal will refuse forever, so drop it rather than
-      // blocking everything behind it.
-      q = q.slice(1); setQueue(q);
-      if(!res.error) applyLedger(res);
-    }
-  }finally{
-    flushing = false;
-    render();
-  }
-}
-addEventListener("online", flushQueue);
 
 async function refresh(){
   const d = await rpc("get_ledger", {p_token:KEY});
@@ -1121,12 +1053,12 @@ function viewLog(t){
   ${canEdit() ? `
   <section>
     <div class="shead"><div class="kicker">Log a payment</div></div>
-    <div class="opts" style="margin-bottom:16px">
+    <div class="opts scroll" style="margin-bottom:16px">
       ${Object.entries(CATS).map(([k,l])=>`<button class="opt ${state.cat===k?"on":""}" onclick="setCat('${k}')">${l}</button>`).join("")}
     </div>
     <label class="lbl" for="f-desc">What was it</label>
     <input class="f" id="f-desc" value="${esc(state.desc)}" oninput="state.desc=this.value">
-    <div style="margin-top:12px;max-width:60%">
+    <div style="margin-top:14px">
       <label class="lbl" id="f-payer-lbl">Paid by</label>
       <button class="pick" aria-labelledby="f-payer-lbl" onclick="pickPayer()">${esc(state.payer)}</button>
     </div>
@@ -1137,9 +1069,9 @@ function viewLog(t){
     </div>
 
     ${state.mode==="equal" ? `
-      <div style="margin-top:14px;max-width:60%">
+      <div style="margin-top:16px">
         <label class="lbl" for="f-amt">Total amount</label>
-        <div class="money"><span>₹</span><input type="number" inputmode="numeric" id="f-amt" placeholder="0"
+        <div class="money big"><span>₹</span><input type="number" inputmode="numeric" id="f-amt" placeholder="0"
           value="${esc(state.amt)}" oninput="state.amt=this.value"></div>
       </div>
     ` : `
@@ -2047,8 +1979,23 @@ function gateHTML(){
   </section>`;
 }
 
+const SHOTS = { log:"bg-log.jpg", settle:"bg-split.jpg", route:"bg-route.jpg", trip:"bg-trip.jpg" };
+// Fade the old one out, swap, fade back in - a hard cut between two photos
+// reads as a glitch.
+function setShot(tab){
+  const el = document.getElementById("shot"), url = SHOTS[tab];
+  if(!el || !url || el.dataset.url === url) return;
+  el.dataset.url = url;
+  el.style.opacity = "0";
+  setTimeout(() => {
+    el.style.backgroundImage = `url("${url}")`;
+    el.style.opacity = "";
+  }, el.style.backgroundImage ? 240 : 0);
+}
+
 function render(){
   document.getElementById("trip").textContent=TRIP;
+  setShot(state.tab);
   const gate=gateHTML();
   const nav=document.querySelector("nav"), st=document.getElementById("status");
   const rl=document.getElementById("role"), ft=document.getElementById("foot");
@@ -2064,10 +2011,7 @@ function render(){
 
   const t=calc();
   updateStatus(t);
-  const waiting = queue().length;
-  rl.innerHTML = `<b>${esc(canEdit() ? OWNER : (state.me||"Guest"))}</b>`
-    + (waiting ? ` · <button class="x" style="color:var(--neg);padding:2px 0"
-         onclick="showQueue()">${waiting} waiting for signal</button>` : "");
+  rl.innerHTML = `<b>${esc(canEdit() ? OWNER : (state.me||"Guest"))}</b>`;
   ft.textContent = "";
   document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on", b.dataset.tab===state.tab));
   document.getElementById("view").innerHTML =
@@ -2127,6 +2071,7 @@ async function boot(){
   if(owner){ KEY = owner; ls(KK, owner); }
   else KEY = ls(KK) || null;
 
+  try{ localStorage.removeItem("tripsplit5:queue"); }catch(e){}   // drop any old queue
   const lastTab = ls(TK);
   if(["log","settle","route","trip"].includes(lastTab)) state.tab = lastTab;
 
@@ -2148,7 +2093,7 @@ async function boot(){
 
   try{
     await refresh();
-    if(canEdit()){ await migrateLocal(); flushQueue(); }
+    if(canEdit()) await migrateLocal();
     if(!ls(SHK)) startShare(true);
   }catch(e){
     // No signal. Keep showing the cached copy if there is one; say so if not.
