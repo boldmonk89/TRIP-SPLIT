@@ -291,6 +291,14 @@
   .detail{padding:0 0 18px 48px}
   .drow{display:flex;gap:10px;padding:7px 0;font-size:14px}
   .drow .amt{margin-left:auto;font-weight:600;font-variant-numeric:tabular-nums}
+  .brow{display:grid;grid-template-columns:1fr auto auto;gap:14px;padding:8px 0;font-size:14px;
+    align-items:baseline}
+  .brow span:nth-child(n+2){width:74px;text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+  .brow.head{font-size:11.5px;font-weight:600;color:var(--dim);text-transform:uppercase;
+    letter-spacing:.04em;border-bottom:1px solid var(--line);padding-bottom:7px}
+  .brow.head span{font-weight:600}
+  .brow.total{border-top:1px solid var(--line);margin-top:4px;padding-top:10px;color:var(--dim)}
+  .brow .none{color:var(--faint);font-weight:400}
 
   .note{background:var(--bg);border-radius:12px;padding:14px 15px;font-size:13.5px;color:var(--dim);line-height:1.55}
   .note b{color:var(--ink);font-weight:600}
@@ -364,10 +372,6 @@ async function rpc(fn, args){
   if(!r.ok) throw new Error("rpc "+fn+" failed: "+r.status);
   return r.json();
 }
-
-// The official pool, and only this. Whatever extra cash anyone carries is
-// their own business and never appears in any number in this app.
-const CAPITAL = { Archit:12000, Satwik:10000, Kripansh:12000, Tejas:12000, Akshat:12000 };
 
 const CATS = { car:"Car", fuel:"Fuel", toll:"Toll", stay:"Stay", food:"Food", activity:"Activity", misc:"Misc" };
 
@@ -752,11 +756,7 @@ function calc(){
   const net=Object.fromEntries(FRIENDS.map(f=>[f,paid[f]-share[f]]));
   for(const p of state.paybacks){ net[p.from]+=Math.round(p.amount); net[p.to]-=Math.round(p.amount); }
 
-  // what should physically still be in each pocket — the discrepancy check
-  const pocket=Object.fromEntries(FRIENDS.map(f=>[f,CAPITAL[f]-paid[f]]));
-  for(const p of state.paybacks){ pocket[p.from]-=Math.round(p.amount); pocket[p.to]+=Math.round(p.amount); }
-
-  return {paid,share,net,debt,transfers,total,pocket};
+  return {paid,share,net,debt,transfers,total};
 }
 
 // ---- actions ----
@@ -961,44 +961,53 @@ function dayKey(ts){ return new Date(ts).toLocaleDateString("en-IN",{day:"numeri
 // line here stands on its own instead, with the headings carrying the shape.
 function whatsappText(){
   const t=calc();
-  const rule="\n━━━━━━━━━━━━━━━\n";
+  const rule="\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n";
   const why=x=>Object.entries(x.why).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1])
     .map(([k])=>CATS[k].toLowerCase()).join(", ");
 
-  let s="🧾 *TRIP SPLIT*\n"+TRIP+"\n\n";
-  s+="Shared things split 5 ways. Food is per person — whatever each of us ordered.\n";
+  let s="\ud83e\uddfe *TRIP SPLIT*\n"+TRIP+"\n";
   if(t.total===0) return s+"\nNothing logged yet.";
 
-  s+=rule+"💸 *WHO PAYS WHOM*\n";
+  s+=rule+"\ud83d\udcb8 *WHO PAYS WHOM*\n";
   if(t.transfers.length===0){
-    s+="\n✅ No one has to pay anyone.\n";
+    s+="\n\u2705 No one has to pay anyone.\n";
   }else{
+    // One line each. The category rides on the same line rather than its own.
     for(const f of FRIENDS) for(const x of t.transfers.filter(x=>x.from===f)){
-      s+="\n• *"+f+"* → *"+x.to+"*  ·  *"+rupee(x.amount)+"*";
-      const w=why(x); if(w) s+="\n   _"+w+"_";
+      const w=why(x);
+      s+="\n\u2022 *"+f+"* \u2192 *"+x.to+"*  *"+rupee(x.amount)+"*"+(w?"  _"+w+"_":"");
     }
     s+="\n";
     const square=FRIENDS.filter(f=>!t.transfers.some(x=>x.from===f));
-    if(square.length) s+="\n✅ Nothing to pay: "+square.join(", ")+"\n";
+    if(square.length) s+="\n\u2705 Nothing to pay: "+square.join(", ")+"\n";
+
+    // Only the people actually owed money need their id in the message.
+    const owed=[...new Set(t.transfers.map(x=>x.to))].filter(n=>(state.upi||{})[n]);
+    if(owed.length){
+      s+=rule+"\ud83d\udcf2 *PAY THEM AT*\n";
+      for(const n of owed) s+="\n"+n+" \u2014 `"+state.upi[n]+"`";
+      s+="\n";
+    }
   }
 
-  s+=rule+"📊 *EVERYONE'S NUMBERS*\n";
+  s+=rule+"\ud83d\udcca *EVERYONE'S NUMBERS*\n";
   for(const f of FRIENDS){
     const bal=t.net[f];
-    s+="\n"+(bal>0?"🟢":bal<0?"🔴":"⚪")+" *"+f+"* — "
-      +(bal>0?"gets *"+rupee(bal)+"* back":bal<0?"has to pay *"+rupee(-bal)+"*":"is all settled");
-    s+="\n   _spent "+rupee(t.paid[f])+" · his share "+rupee(t.share[f])+"_";
+    s+="\n"+(bal>0?"\ud83d\udfe2":bal<0?"\ud83d\udd34":"\u26aa")+" *"+f+"* "
+      +(bal>0?"gets *"+rupee(bal)+"* back":bal<0?"pays *"+rupee(-bal)+"*":"is settled")
+      +"  _(spent "+rupee(t.paid[f])+", used "+rupee(t.share[f])+")_";
   }
   s+="\n";
 
   if(state.paybacks.length){
-    s+=rule+"🤝 *ALREADY PAID BACK*\n";
-    for(const p of state.paybacks) s+="\n• "+p.from+" → "+p.to+"  ·  "+rupee(p.amount);
+    s+=rule+"\ud83e\udd1d *ALREADY PAID BACK*\n";
+    for(const p of state.paybacks) s+="\n\u2022 "+p.from+" \u2192 "+p.to+"  "+rupee(p.amount);
     s+="\n";
   }
 
-  return s+rule+"💰 Total spent so far: *"+rupee(t.total)+"*";
+  return s+rule+"\ud83d\udcb0 Total spent: *"+rupee(t.total)+"*";
 }
+
 function shareWA(){ window.open("https://wa.me/?text="+encodeURIComponent(whatsappText()),"_blank"); }
 
 // ---- render ----
@@ -1146,12 +1155,11 @@ function viewSettle(t){
     <div class="shead"><div class="kicker">Each person</div></div>
     ${FRIENDS.map(f=>{
       const bal=t.net[f], pos=bal>=0, open=state.openPerson===f;
-      const mine=state.expenses.filter(e=>e.payer===f);
-      // Every bill he has a part in, and how much of it is his. This is what
-      // his share is actually made of, so "still owes" has something behind it.
-      const used=state.expenses
-        .map(e=>({e, part:Math.round(num(sharesOf(e)[f]))}))
-        .filter(x=>x.part>0);
+      // Every bill he touched: what he put in for it, and what of it was his.
+      // One table beats two lists that repeat the same bill with two numbers.
+      const bills=state.expenses
+        .map(e=>({e, part:Math.round(num(sharesOf(e)[f])), paid:e.payer===f?amtOf(e):0}))
+        .filter(x=>x.part>0 || x.paid>0);
       return `<div class="person">
         <button class="phead" onclick="togglePerson('${f}')">
           <div class="ini">${initials(f)}</div>
@@ -1163,24 +1171,18 @@ function viewSettle(t){
           <div class="caret">${open?"▲":"▼"}</div>
         </button>
         ${open?`<div class="detail">
-          <div class="kicker" style="margin-bottom:8px">His share is for</div>
-          ${used.length===0
-            ? `<div class="hint">Nothing so far.</div>`
-            : used.map(x=>`<div class="drow"><span>${esc(x.e.desc)}
-                 <span style="color:var(--dim)">· ${CATS[x.e.cat].toLowerCase()} · ${x.e.payer===f?"he paid":x.e.payer+" paid"}</span></span>
-                 <span class="amt">${rupee(x.part)}</span></div>`).join("")
-              + `<div class="drow" style="border-top:1px solid var(--line);margin-top:5px;padding-top:9px">
-                   <span style="color:var(--dim)">His share</span><span class="amt">${rupee(t.share[f])}</span></div>`}
-
-          <div class="kicker" style="margin:16px 0 8px">He paid for</div>
-          ${mine.length===0
-            ? `<div class="hint">Hasn't paid for anything yet.</div>`
-            : mine.map(e=>`<div class="drow"><span>${esc(e.desc)}</span><span class="amt">${rupee(amtOf(e))}</span></div>`).join("")
-              + `<div class="drow" style="border-top:1px solid var(--line);margin-top:5px;padding-top:9px">
-                   <span style="color:var(--dim)">Total</span><span class="amt">${rupee(t.paid[f])}</span></div>`}
+          ${bills.length===0
+            ? `<div class="hint">Nothing yet.</div>`
+            : `<div class="brow head"><span>Bill</span><span>He paid</span><span>His part</span></div>
+               ${bills.map(x=>`<div class="brow">
+                 <span>${esc(x.e.desc)}</span>
+                 <span class="${x.paid?"":"none"}">${x.paid?rupee(x.paid):"—"}</span>
+                 <span class="${x.part?"":"none"}">${x.part?rupee(x.part):"—"}</span>
+               </div>`).join("")}
+               <div class="brow total"><span>Total</span>
+                 <span>${rupee(t.paid[f])}</span><span>${rupee(t.share[f])}</span></div>`}
           <div class="note" style="margin-top:14px">
             ${bal>0 ? `Gets <b>${rupee(bal)}</b> back.` : bal<0 ? `Has to pay <b>${rupee(-bal)}</b>.` : `All settled.`}
-            Should still be holding <b>${rupee(t.pocket[f])}</b> in cash.
           </div>
         </div>`:""}
       </div>`;
