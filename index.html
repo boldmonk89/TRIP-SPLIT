@@ -491,6 +491,7 @@ let state = {
   plan: {...PLAN, rate:CAR_RATE, days:CAR_DAYS},
   tab:"log", cat:"food", payer:FRIENDS[0], openPerson:null, showPlan:false,
   mode:"equal", draft:{},   // draft holds the per-person amounts being typed
+  editing:null,             // id of the expense being changed, if any
   desc:"", amt:"",          // kept here so a re-render cannot throw them away
 
   // who is looking: "owner" can change things, "viewer" can only read
@@ -748,12 +749,27 @@ function calc(){
 
 // ---- actions ----
 function setTab(t){
-  state.tab=t; state.openPerson=null;
+  state.tab=t; state.openPerson=null; state.editing=null;
   ls(TK, t);                       // so a reload comes back where you were
   if(t==="route"){ startRoutePoll(); refreshQuiet().then(paintLive); }
-  else { stopRoutePoll(); if(lmap){ lmap.remove(); lmap=null; } }
+  else {
+    stopRoutePoll();
+    if(lmap){ lmap.remove(); lmap=null; }
+    catchUp();
+  }
   render(); renderInstall();
 }
+
+// Pull the ledger again whenever you arrive somewhere it matters: switching
+// tabs, or coming back to the app after it was in the background. Cheap, and
+// it beats polling every screen.
+function catchUp(){
+  if(!KEY || state.gate) return;
+  refreshQuiet().then(render);
+}
+document.addEventListener("visibilitychange", () => {
+  if(document.visibilityState === "visible") catchUp();
+});
 function setCat(k){ state.cat=k; render(); }
 function togglePerson(f){ state.openPerson = state.openPerson===f ? null : f; render(); }
 function togglePlan(){ state.showPlan=!state.showPlan; render(); }
@@ -773,6 +789,31 @@ function setDraft(f,v){
   if(el) el.textContent=rupee(draftTotal());
 }
 
+// Load an existing row back into the form rather than making people delete
+// and retype it - which also used to move the bill to today's date.
+function editExpense(id){
+  const e = state.expenses.find(x => String(x.id) === String(id));
+  if(!e) return;
+  const sh = sharesOf(e);
+  setTab("log");                 // this resets state.editing, so fill in after it
+  state.editing = String(e.id);
+  state.cat   = e.cat;
+  state.desc  = e.desc || "";
+  state.payer = e.payer;
+  state.mode  = e.mode || "equal";
+  state.amt   = e.mode === "each" ? "" : String(amtOf(e));
+  state.draft = e.mode === "each"
+    ? Object.fromEntries(FRIENDS.map(f => [f, String(Math.round(num(sh[f])) || "")]))
+    : {};
+  render();
+  scrollTo({top:0, behavior:"smooth"});
+}
+
+function cancelEdit(){
+  state.editing = null; state.desc = ""; state.amt = ""; state.draft = {};
+  render();
+}
+
 async function addExpense(){
   const desc=state.desc.trim();
   if(!desc){ await ui.alert("Needs a label", "Type what the payment was for."); return; }
@@ -786,9 +827,13 @@ async function addExpense(){
     if(FRIENDS.some(f=>shares[f]<0)){ await ui.alert("Amounts can't be negative"); return; }
     if(FRIENDS.reduce((s,f)=>s+shares[f],0)<=0){ await ui.alert("Nothing to add", "Put in at least one person's amount."); return; }
   }
-  const now=Date.now();
-  if(await push("add_expense", {id:String(now), ts:now, cat:state.cat, desc, payer:state.payer, mode:state.mode, shares})){
-    state.draft={}; state.desc=""; state.amt="";
+  const editing = state.editing;
+  const now = Date.now();
+  const row = {id: editing || String(now), ts: now, cat:state.cat, desc,
+               payer:state.payer, mode:state.mode, shares};
+  if(await push(editing ? "edit_expense" : "add_expense", row)){
+    state.draft={}; state.desc=""; state.amt=""; state.editing=null;
+    if(editing) toast("Updated");
     render();
   }
 }
@@ -1058,7 +1103,10 @@ function viewLog(t){
   return `
   ${canEdit() ? `
   <section>
-    <div class="shead"><div class="kicker">Log a payment</div></div>
+    <div class="shead">
+      <div class="kicker">${state.editing ? "Edit this payment" : "Log a payment"}</div>
+      ${state.editing ? `<button class="link" onclick="cancelEdit()">Cancel</button>` : ""}
+    </div>
     <div class="opts scroll" style="margin-bottom:16px">
       ${Object.entries(CATS).map(([k,l])=>`<button class="opt ${state.cat===k?"on":""}" onclick="setCat('${k}')">${l}</button>`).join("")}
     </div>
@@ -1094,7 +1142,7 @@ function viewLog(t){
         <div class="amt" id="draftTotal">${rupee(draftTotal())}</div>
       </div>
     `}
-    <button class="btn" onclick="addExpense()">Add</button>
+    <button class="btn" onclick="addExpense()">${state.editing ? "Save changes" : "Add"}</button>
   </section>
   ` : ""}
 
@@ -1119,9 +1167,10 @@ function viewLog(t){
               <div class="t">${esc(e.desc)}</div>
               <div class="s">${e.payer} paid · ${sub}</div>
             </div>
-            <div>
+            <div class="acts">
               <div class="amt">${rupee(amtOf(e))}</div>
-              ${canEdit()?`<button class="x" onclick="delExpense('${e.id}')">remove</button>`:""}
+              ${canEdit()?`<span><button class="x" onclick="editExpense('${e.id}')">edit</button>
+                <button class="x" style="margin-left:10px" onclick="delExpense('${e.id}')">remove</button></span>`:""}
             </div>
           </div>`;
         }).join("")}`;
