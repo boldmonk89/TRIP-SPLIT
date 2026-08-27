@@ -553,25 +553,15 @@ async function refresh(){
   applyLedger(d);
 }
 
-// Whatever was already sitting in this browser from before the app went shared,
-// lifted up once so nothing from the trip is lost.
-async function migrateLocal(){
-  if(ls(MK)) return;
-  let old = {e:[], p:[], plan:null};
-  try{
-    old.e    = JSON.parse(ls("tripsplit4:expenses") || "[]");
-    old.p    = JSON.parse(ls("tripsplit4:paybacks") || "[]");
-    old.plan = JSON.parse(ls("tripsplit4:plan") || "null");
-  }catch(e){}
-  const hasOld = old.e.length || old.p.length;
-  // Only ever into an empty ledger, so this can never double up on real data.
-  if(!hasOld || state.expenses.length || state.paybacks.length){ ls(MK, "1"); return; }
-  const payload = {
-    expenses: old.e.map(x => ({...x, id:String(x.id), ts:x.ts || x.id, shares:sharesOf(x)})),
-    paybacks: old.p.map(x => ({...x, id:String(x.id), ts:x.ts || x.id})),
-  };
-  if(old.plan) payload.plan = old.plan;
-  if(await push("import", payload)) ls(MK, "1");
+// The one-time lift of this browser's pre-shared-ledger data ran back when the
+// app went online, and the trip has lived on the server ever since. It is gone
+// now: it only fired into an empty ledger, which is exactly the state you are
+// in right after Clear all - so it could put months-old rows back on a ledger
+// you had just deliberately emptied. The legacy keys are cleared instead.
+function dropLegacy(){
+  for(const k of ["tripsplit4:expenses","tripsplit4:paybacks","tripsplit4:plan"]){
+    try{ localStorage.removeItem(k); }catch(e){}
+  }
 }
 
 // ---- dialogs ----
@@ -2093,7 +2083,7 @@ async function boot(){
 
   try{
     await refresh();
-    if(canEdit()) await migrateLocal();
+    if(canEdit()) dropLegacy();
     if(!ls(SHK)) startShare(true);
   }catch(e){
     // No signal. Keep showing the cached copy if there is one; say so if not.
