@@ -67,9 +67,13 @@
     background:rgba(15,23,42,.86);border-radius:100px;padding:5px 12px;
     -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
     transition:background var(--t), color var(--t), padding var(--t)}
-  .status{margin-top:14px;display:inline-flex;align-items:center;gap:7px;border-radius:100px;
-    padding:8px 15px;font-size:13.5px;font-weight:600;background:rgba(255,255,255,.95);color:var(--brand)}
-  .trip,.status{transition:opacity 160ms ease, max-height 220ms ease, margin-top 220ms ease}
+  .statusrow{margin-top:14px;display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+  .status{display:inline-flex;align-items:center;gap:7px;border-radius:100px;
+    padding:8px 15px;font-size:13.5px;font-weight:600;background:#fff;color:#c2183f;
+    box-shadow:0 2px 10px rgba(15,23,42,.16);
+    transition:background var(--t), color var(--t)}
+  .statusnote{font-size:12.5px;color:rgba(255,255,255,.92);text-shadow:0 1px 10px rgba(15,23,42,.5)}
+  .trip,.statusrow{transition:opacity 160ms ease, max-height 220ms ease, margin-top 220ms ease}
 
   /* scrolled past the photo, so the bar becomes frosted white with dark text */
   header.tight{padding:11px 0 10px;background:rgba(255,255,255,.86)}
@@ -79,7 +83,7 @@
   @supports (backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px)){
     header.tight{-webkit-backdrop-filter:saturate(190%) blur(24px);backdrop-filter:saturate(190%) blur(24px)}
   }
-  header.tight .trip,header.tight .status{
+  header.tight .trip,header.tight .statusrow{
     opacity:0;max-height:0;margin-top:0;overflow:hidden;pointer-events:none}
   .status.ok{background:var(--tint-pos);color:var(--pos)}
   .status.idle{background:var(--bg);color:var(--dim)}
@@ -225,6 +229,14 @@
     font-weight:600;opacity:0;pointer-events:none;transform:translateX(-50%) translateY(10px);
     transition:opacity var(--t),transform var(--t)}
   #toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+  /* Only while the "enter" class is on, so a re-render mid-typing does not
+     make the whole page jump about. */
+  @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  #view.enter>section{animation:rise 300ms cubic-bezier(.22,1,.36,1) both}
+  #view.enter>section:nth-child(2){animation-delay:45ms}
+  #view.enter>section:nth-child(3){animation-delay:90ms}
+  #view.enter>section:nth-child(4){animation-delay:130ms}
+  #view.enter>section:nth-child(n+5){animation-delay:165ms}
   @keyframes fadeIn{from{opacity:0}to{opacity:1}}
   @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
   @keyframes popIn{from{transform:scale(.96);opacity:0}to{transform:scale(1);opacity:1}}
@@ -355,7 +367,10 @@
       <div class="role" id="role"></div>
     </div>
     <p class="trip" id="trip"></p>
-    <div class="status" id="status"></div>
+    <div class="statusrow" id="statusrow">
+      <div class="status" id="status"></div>
+      <span class="statusnote" id="statusnote"></span>
+    </div>
   </div>
 </header>
 
@@ -393,6 +408,8 @@
 const FRIENDS = ["Archit","Satwik","Kripansh","Tejas","Akshat"];
 const OWNER = "Tejas";   // the one holding the owner link; everyone else reads only
 const TRIP = "Delhi · Haridwar · Rishikesh · Mussoorie · Landour · Dhanaulti · 8–11 Sep";
+// The header has one line to play with, and every stop is on the Route tab.
+const TRIP_SHORT = "Delhi · Mussoorie · Dhanaulti · 8–11 Sep";
 
 // ---- the shared ledger ----
 // The key below is meant to be public — on its own it can reach nothing. Every
@@ -767,7 +784,13 @@ function setTab(t){
     catchUp();
   }
   render(); renderInstall();
+
+  const v = document.getElementById("view");
+  v.classList.add("enter");
+  clearTimeout(enterT);
+  enterT = setTimeout(() => v.classList.remove("enter"), 520);
 }
+let enterT = null;
 
 // Pull the ledger again whenever you arrive somewhere it matters: switching
 // tabs, or coming back to the app after it was in the background. Cheap, and
@@ -1082,14 +1105,29 @@ function whatsappText(){
 function shareWA(){ window.open("https://wa.me/?text="+encodeURIComponent(whatsappText()),"_blank"); }
 
 // ---- render ----
+// The bar showed the group's total to everyone, which is the one number that
+// is nobody's in particular. It leads with your own position now, and keeps
+// the group total beside it as the smaller fact.
 function updateStatus(t){
-  const n=t.transfers.length, el=document.getElementById("status");
-  const due=t.transfers.reduce((s,x)=>s+x.amount,0);
-  el.className = "status" + (t.total===0 ? " idle" : n===0 ? " ok" : "");
-  el.textContent =
-    t.total===0 ? "Nothing logged yet"
-    : n===0 ? "No one has to pay anything"
-    : `${rupee(due)} still to settle`;
+  const el = document.getElementById("status"), note = document.getElementById("statusnote");
+  const due = t.transfers.reduce((s,x)=>s+x.amount,0);
+  const me = whoAmI();
+  const known = FRIENDS.includes(me);
+  const owe = known ? t.transfers.filter(x => x.from === me).reduce((s,x)=>s+x.amount, 0) : 0;
+  const get = known ? t.transfers.filter(x => x.to   === me).reduce((s,x)=>s+x.amount, 0) : 0;
+
+  let cls = "status", main;
+  if(t.total === 0){       cls += " idle"; main = "Nothing logged yet"; }
+  else if(!known){                         main = rupee(due) + " still to settle"; }
+  else if(owe > 0){                        main = "You pay " + rupee(owe); }
+  else if(get > 0){        cls += " ok";   main = "You get " + rupee(get); }
+  else {                   cls += " ok";   main = "You are settled up"; }
+
+  el.className = cls;
+  el.textContent = main;
+  note.textContent = (t.total > 0 && known)
+    ? (due > 0 ? rupee(due) + " left across everyone" : "everyone is square")
+    : "";
 }
 
 function planNoteHTML(){
@@ -2062,7 +2100,7 @@ function setShot(tab){
 }
 
 function render(){
-  document.getElementById("trip").textContent=TRIP;
+  document.getElementById("trip").textContent=TRIP_SHORT;
   setShot(state.tab);
   const gate=gateHTML();
   const nav=document.querySelector("nav"), st=document.getElementById("status");
