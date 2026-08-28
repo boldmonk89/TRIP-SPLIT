@@ -147,9 +147,6 @@
   .link{border:0;background:none;padding:7px 0;font-size:13.5px;font-weight:600;color:var(--ink);
     text-decoration:underline;text-underline-offset:3px;min-height:24px}
   .opts{display:flex;flex-wrap:wrap;gap:8px}
-  .splitrow{display:flex;align-items:baseline;gap:9px}
-  .splitwho{font-size:14px;font-weight:600;flex:1;min-width:0;
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .faces{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-top:11px}
   .face{display:flex;flex-direction:column;align-items:center;gap:5px;border:0;background:none;
     padding:4px 0;font-size:10.5px;font-weight:600;color:var(--dim);min-height:44px;
@@ -540,7 +537,6 @@ let state = {
   mode:"equal", draft:{},   // draft holds the per-person amounts being typed
   editing:null,             // id of the expense being changed, if any
   who:[...FRIENDS],         // who this particular bill is split between
-  pickWho:false,            // the face picker is only open when you need it
   desc:"", amt:"",          // kept here so a re-render cannot throw them away
 
   // who is looking: "owner" can change things, "viewer" can only read
@@ -855,6 +851,23 @@ function toggleWho(f){
   render();
 }
 const whoIn = () => FRIENDS.filter(f => state.who.includes(f));
+
+// Says who is in and, once there is an amount, what that works out to each -
+// which is the number people are actually checking.
+function shareSummary(){
+  const on = whoIn(), amt = Math.round(parseFloat(state.amt));
+  const who = on.length === FRIENDS.length ? "Everyone"
+            : on.length === 1              ? "Only " + on[0]
+            :                                on.join(", ");
+  if(!amt || amt <= 0) return who + " · tap a face to leave someone out";
+  // "each" only means something when there is more than one of them
+  return who + " · " + rupee(Math.round(amt / on.length)) + (on.length > 1 ? " each" : "");
+}
+// Typing the amount must not rebuild the form, or the keyboard closes.
+function updateShareLine(){
+  const el = document.getElementById("shareLine");
+  if(el) el.textContent = shareSummary();
+}
 async function pickPayer(){
   const v = await ui.pick("Paid by", FRIENDS, state.payer);
   if(v){ state.payer = v; render(); }
@@ -883,7 +896,6 @@ function editExpense(id){
     : {};
   const had = FRIENDS.filter(f => Math.round(num(sh[f])) > 0);
   state.who = had.length ? had : [...FRIENDS];
-  state.pickWho = state.who.length !== FRIENDS.length;
   render();
   scrollTo({top:0, behavior:"smooth"});
   toast("Editing " + (e.desc || "this payment"));
@@ -891,7 +903,7 @@ function editExpense(id){
 
 function cancelEdit(){
   state.editing = null; state.desc = ""; state.amt = ""; state.draft = {};
-  state.who = [...FRIENDS]; state.pickWho = false;
+  state.who = [...FRIENDS];
   render();
   toast("Edit cancelled");
 }
@@ -918,7 +930,7 @@ async function addExpense(){
                payer: canEdit() ? state.payer : whoAmI(), mode:state.mode, shares};
   if(await push(editing ? "edit_expense" : "add_expense", row)){
     state.draft={}; state.desc=""; state.amt=""; state.editing=null;
-    state.who=[...FRIENDS]; state.pickWho=false;
+    state.who=[...FRIENDS];
     toast(editing ? "Saved changes" : "Added " + desc);
     render();
   }
@@ -1224,34 +1236,26 @@ function viewLog(t){
     </div>` : `
     <div class="hint" style="margin-top:14px">Logged as paid by <b>${esc(whoAmI())}</b>.</div>`}
 
-    <div class="opts" style="margin-top:18px">
-      <button class="opt ${state.mode==="equal"?"on":""}" onclick="setMode('equal')">Split equally</button>
-      <button class="opt ${state.mode==="each"?"on":""}" onclick="setMode('each')">Different amounts</button>
-    </div>
-    <div class="hint" style="margin:9px 0 0">${state.mode==="equal"
-      ? "One bill, divided evenly between the people below."
-      : "One bill, but everyone's part is different. Type each part — they should add up to the bill."}</div>
-
     ${state.mode==="equal" ? `
-      <div style="margin-top:16px">
-        <div class="splitrow">
-          <span class="lbl" style="margin:0">Split between</span>
-          <span class="splitwho">${whoIn().length === FRIENDS.length ? "everyone" : whoIn().join(", ")}</span>
-          <button class="x" onclick="state.pickWho=!state.pickWho;render()">${state.pickWho?"done":"change"}</button>
-        </div>
-        ${state.pickWho ? `<div class="faces">
+      <div style="margin-top:18px">
+        <label class="lbl">Who shares this bill</label>
+        <div class="faces">
           ${FRIENDS.map(f=>`<button class="face ${state.who.includes(f)?"on":""}"
             aria-pressed="${state.who.includes(f)}" onclick="toggleWho(${jq(f)})">
             <span class="ini">${initials(f)}</span><span>${esc(f)}</span></button>`).join("")}
-        </div>` : ""}
+        </div>
+        <div class="hint" style="margin:10px 0 0" id="shareLine">${shareSummary()}</div>
       </div>
 
       <div style="margin-top:16px">
         <label class="lbl" for="f-amt">Total amount</label>
         <div class="money big"><span>₹</span><input type="number" inputmode="numeric" id="f-amt" placeholder="0"
-          value="${esc(state.amt)}" oninput="state.amt=this.value"></div>
+          value="${esc(state.amt)}" oninput="state.amt=this.value;updateShareLine()"></div>
       </div>
+
+      <button class="x" style="margin-top:14px" onclick="setMode('each')">Everyone owes a different amount?</button>
     ` : `
+      <div style="margin-top:18px"><label class="lbl">What each person owes</label></div>
       ${FRIENDS.map(f=>`
         <div class="row" style="padding:9px 0">
           <div class="ini">${initials(f)}</div>
@@ -1261,9 +1265,10 @@ function viewLog(t){
         </div>`).join("")}
       <div class="row" style="border-top:1px solid var(--edge)">
         <div class="body"><div class="t">These add up to</div>
-          <div class="s">which is what ${esc(canEdit()?state.payer:whoAmI())} paid in total</div></div>
+          <div class="s">which should be what ${esc(canEdit()?state.payer:whoAmI())} paid</div></div>
         <div class="amt" id="draftTotal">${rupee(draftTotal())}</div>
       </div>
+      <button class="x" style="margin-top:14px" onclick="setMode('equal')">Everyone owes the same? Split it evenly</button>
     `}
     <button class="btn" onclick="addExpense()">${state.editing ? "Save changes" : "Add"}</button>
   </section>
