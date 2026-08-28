@@ -872,10 +872,27 @@ async function pickPayer(){
   const v = await ui.pick("Paid by", FRIENDS, state.payer);
   if(v){ state.payer = v; render(); }
 }
+// What is still unspoken for. Rewritten in place so the keyboard stays up.
+function draftNote(){
+  const bill = Math.round(parseFloat(state.amt));
+  if(!bill || bill <= 0) return "put the bill total in above and this checks itself";
+  const left = bill - draftTotal();
+  return left === 0 ? "that matches the bill exactly"
+       : left  >  0 ? rupee(left) + " of the bill is still unaccounted for"
+       :              rupee(-left) + " more than the bill";
+}
+function updateDraftTotal(){
+  const t = document.getElementById("draftTotal"), n = document.getElementById("draftNote");
+  if(t) t.textContent = rupee(draftTotal());
+  if(n){
+    n.textContent = draftNote();
+    const bill = Math.round(parseFloat(state.amt));
+    n.style.color = (bill > 0 && bill !== draftTotal()) ? "var(--neg)" : "";
+  }
+}
 function setDraft(f,v){
   state.draft[f]=v;
-  const el=document.getElementById("draftTotal");
-  if(el) el.textContent=rupee(draftTotal());
+  updateDraftTotal();
 }
 
 // Load an existing row back into the form rather than making people delete
@@ -922,7 +939,17 @@ async function addExpense(){
   }else{
     for(const f of FRIENDS) shares[f]=Math.round(num(state.draft[f]));
     if(FRIENDS.some(f=>shares[f]<0)){ await ui.alert("Amounts can't be negative"); return; }
-    if(FRIENDS.reduce((s,f)=>s+shares[f],0)<=0){ await ui.alert("Nothing to add", "Put in at least one person's amount."); return; }
+    const sum = FRIENDS.reduce((s,f)=>s+shares[f],0);
+    if(sum<=0){ await ui.alert("Nothing to add", "Put in at least one person's amount."); return; }
+    const bill = Math.round(parseFloat(state.amt));
+    if(bill > 0 && bill !== sum){
+      const ok = await ui.confirm("The parts do not add up to the bill", {
+        body: "You put the bill at " + rupee(bill) + ", but the parts come to " + rupee(sum)
+            + ". Saving will use " + rupee(sum) + ".",
+        ok: "Save anyway",
+      });
+      if(!ok) return;
+    }
   }
   const editing = state.editing;
   const now = Date.now();
@@ -1255,17 +1282,25 @@ function viewLog(t){
 
       <button class="x" style="margin-top:14px" onclick="setMode('each')">Everyone owes a different amount?</button>
     ` : `
-      <div style="margin-top:18px"><label class="lbl">What each person owes</label></div>
+      <div style="margin-top:16px">
+        <label class="lbl" for="f-amt">What the whole bill came to</label>
+        <div class="money big"><span>₹</span><input type="number" inputmode="numeric" id="f-amt" placeholder="0"
+          value="${esc(state.amt)}" oninput="state.amt=this.value;updateDraftTotal()"></div>
+      </div>
+      <div style="margin-top:18px">
+        <label class="lbl">Each person's own part</label>
+        <div class="hint" style="margin:-2px 0 0">Not what they handed over — what they themselves ate or used.</div>
+      </div>
       ${FRIENDS.map(f=>`
         <div class="row" style="padding:9px 0">
           <div class="ini">${initials(f)}</div>
-          <div class="body"><div class="t">${f}${f===state.payer?` <span style="color:var(--dim);font-weight:400">· paying</span>`:""}</div></div>
+          <div class="body"><div class="t">${f}${f===state.payer?` <span style="color:var(--dim);font-weight:400">· paid the bill</span>`:""}</div></div>
           <div class="money" style="width:132px"><span>₹</span><input type="number" inputmode="numeric"
-            aria-label="What ${esc(f)} ordered" value="${state.draft[f]??""}" placeholder="0" oninput="setDraft('${f}',this.value)"></div>
+            aria-label="${esc(f)}'s own part" value="${state.draft[f]??""}" placeholder="0" oninput="setDraft('${f}',this.value)"></div>
         </div>`).join("")}
       <div class="row" style="border-top:1px solid var(--edge)">
         <div class="body"><div class="t">These add up to</div>
-          <div class="s">which should be what ${esc(canEdit()?state.payer:whoAmI())} paid</div></div>
+          <div class="s" id="draftNote">${draftNote()}</div></div>
         <div class="amt" id="draftTotal">${rupee(draftTotal())}</div>
       </div>
       <button class="x" style="margin-top:14px" onclick="setMode('equal')">Everyone owes the same? Split it evenly</button>
