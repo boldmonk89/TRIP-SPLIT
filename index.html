@@ -51,40 +51,41 @@
   .n{font-variant-numeric:tabular-nums}
 
   /* header */
-  header{background:transparent;padding:24px 0 26px;position:sticky;top:0;z-index:18;
-    transition:background var(--t), padding var(--t)}
+  header{background:transparent;padding:24px 0 26px;position:relative;z-index:2}
+  /* Fixed, so it is out of flow and can never shift what is behind it. */
+  #minibar{position:fixed;top:0;left:0;right:0;z-index:22;padding:10px 0;
+    background:rgba(255,255,255,.86);border-bottom:1px solid var(--line);
+    opacity:0;transform:translateY(-102%);pointer-events:none;
+    transition:opacity 200ms ease, transform 300ms cubic-bezier(.22,1,.36,1)}
+  #minibar.on{opacity:1;transform:none;pointer-events:auto}
+  #minibar .wrap{display:flex;align-items:center;gap:10px}
+  #minibar b{font-size:16px;font-weight:700;letter-spacing:-.025em;color:var(--ink)}
+  #minibar .status{font-size:12.5px;padding:5px 12px;box-shadow:none}
+  .mininame{margin-left:auto;font-size:12px;font-weight:600;color:var(--dim)}
+  @supports (backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px)){
+    #minibar{-webkit-backdrop-filter:saturate(190%) blur(24px);backdrop-filter:saturate(190%) blur(24px)}
+  }
   /* a scrim, so white text holds over whichever photo is behind it */
   header::before{content:"";position:absolute;inset:0;z-index:-1;
-    background:linear-gradient(180deg, rgba(15,23,42,.50), rgba(15,23,42,.22) 60%, rgba(15,23,42,0));
-    transition:opacity var(--t)}
+    background:linear-gradient(180deg, rgba(15,23,42,.50), rgba(15,23,42,.22) 60%, rgba(15,23,42,0))}
   .hrow{display:flex;align-items:baseline;gap:12px}
   header h1{font-size:27px;font-weight:700;letter-spacing:-.035em;color:#fff;
-    text-shadow:0 1px 14px rgba(15,23,42,.45);transition:font-size var(--t), color var(--t)}
+    text-shadow:0 1px 14px rgba(15,23,42,.45)}
   .trip{font-size:13.5px;color:rgba(255,255,255,.93);margin-top:3px;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
     text-shadow:0 1px 10px rgba(15,23,42,.5)}
   .role{margin-left:auto;font-size:12px;color:#fff;font-weight:600;white-space:nowrap;
     background:rgba(15,23,42,.86);border-radius:100px;padding:5px 12px;
-    -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
-    transition:background var(--t), color var(--t), padding var(--t)}
+    -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
   .statusrow{margin-top:14px;display:flex;align-items:center;gap:11px;flex-wrap:wrap}
   .status{display:inline-flex;align-items:center;gap:7px;border-radius:100px;
     padding:8px 15px;font-size:13.5px;font-weight:600;background:#fff;color:#c2183f;
     box-shadow:0 2px 10px rgba(15,23,42,.16);
     transition:background var(--t), color var(--t)}
   .statusnote{font-size:12.5px;color:rgba(255,255,255,.92);text-shadow:0 1px 10px rgba(15,23,42,.5)}
-  .trip,.statusrow{transition:opacity 160ms ease, max-height 220ms ease, margin-top 220ms ease}
 
-  /* scrolled past the photo, so the bar becomes frosted white with dark text */
-  header.tight{padding:11px 0 10px;background:rgba(255,255,255,.86)}
-  header.tight::before{opacity:0}
-  header.tight h1{font-size:19px;color:var(--ink);text-shadow:none}
-  header.tight .role{color:var(--dim);background:none;padding:0;-webkit-backdrop-filter:none;backdrop-filter:none}
-  @supports (backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px)){
-    header.tight{-webkit-backdrop-filter:saturate(190%) blur(24px);backdrop-filter:saturate(190%) blur(24px)}
-  }
-  header.tight .trip,header.tight .statusrow{
-    opacity:0;max-height:0;margin-top:0;overflow:hidden;pointer-events:none}
+
+
   .status.ok{background:var(--tint-pos);color:var(--pos)}
   .status.idle{background:var(--bg);color:var(--dim)}
 
@@ -359,6 +360,14 @@
 </style>
 </head>
 <body>
+
+<div id="minibar">
+  <div class="wrap">
+    <b>Trip Split</b>
+    <div class="status" id="ministatus"></div>
+    <span class="mininame" id="mininame"></span>
+  </div>
+</div>
 
 <header id="top">
   <div class="wrap">
@@ -1125,6 +1134,10 @@ function updateStatus(t){
 
   el.className = cls;
   el.textContent = main;
+  const mini = document.getElementById("ministatus");
+  mini.className = cls;
+  mini.textContent = main;
+  document.getElementById("mininame").textContent = canEdit() ? OWNER : (state.me || "");
   note.textContent = (t.total > 0 && known)
     ? (due > 0 ? rupee(due) + " left across everyone" : "everyone is square")
     : "";
@@ -2130,14 +2143,13 @@ function render(){
 }
 document.querySelectorAll("nav button").forEach(b=>b.addEventListener("click",()=>setTab(b.dataset.tab)));
 
-// The full header is worth a quarter of a phone screen, so it only keeps that
-// while you are at the top. A little hysteresis stops it flickering on and off
-// when a scroll lands right on the threshold.
-let tight = false;
+// Show the compact bar once the real header has scrolled away. It is fixed, so
+// this changes no layout and therefore cannot feed back into scrollY - the
+// thing that made the old collapsing header flicker.
 addEventListener("scroll", () => {
-  const y = scrollY;
-  if(y > 46 && !tight){ tight = true; document.getElementById("top").classList.add("tight"); }
-  else if(y < 18 && tight){ tight = false; document.getElementById("top").classList.remove("tight"); }
+  const on = scrollY > 128;
+  const el = document.getElementById("minibar");
+  if(on !== el.classList.contains("on")) el.classList.toggle("on", on);
 }, {passive:true});
 
 // ---- add to home screen ----
