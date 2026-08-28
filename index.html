@@ -147,7 +147,10 @@
   .link{border:0;background:none;padding:7px 0;font-size:13.5px;font-weight:600;color:var(--ink);
     text-decoration:underline;text-underline-offset:3px;min-height:24px}
   .opts{display:flex;flex-wrap:wrap;gap:8px}
-  .faces{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}
+  .splitrow{display:flex;align-items:baseline;gap:9px}
+  .splitwho{font-size:14px;font-weight:600;flex:1;min-width:0;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .faces{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-top:11px}
   .face{display:flex;flex-direction:column;align-items:center;gap:5px;border:0;background:none;
     padding:4px 0;font-size:10.5px;font-weight:600;color:var(--dim);min-height:44px;
     transition:color var(--t),opacity var(--t)}
@@ -537,6 +540,7 @@ let state = {
   mode:"equal", draft:{},   // draft holds the per-person amounts being typed
   editing:null,             // id of the expense being changed, if any
   who:[...FRIENDS],         // who this particular bill is split between
+  pickWho:false,            // the face picker is only open when you need it
   desc:"", amt:"",          // kept here so a re-render cannot throw them away
 
   // who is looking: "owner" can change things, "viewer" can only read
@@ -879,13 +883,14 @@ function editExpense(id){
     : {};
   const had = FRIENDS.filter(f => Math.round(num(sh[f])) > 0);
   state.who = had.length ? had : [...FRIENDS];
+  state.pickWho = state.who.length !== FRIENDS.length;
   render();
   scrollTo({top:0, behavior:"smooth"});
 }
 
 function cancelEdit(){
   state.editing = null; state.desc = ""; state.amt = ""; state.draft = {};
-  state.who = [...FRIENDS];
+  state.who = [...FRIENDS]; state.pickWho = false;
   render();
 }
 
@@ -910,7 +915,8 @@ async function addExpense(){
   const row = {id: editing || String(now), ts: now, cat:state.cat, desc,
                payer: canEdit() ? state.payer : whoAmI(), mode:state.mode, shares};
   if(await push(editing ? "edit_expense" : "add_expense", row)){
-    state.draft={}; state.desc=""; state.amt=""; state.editing=null; state.who=[...FRIENDS];
+    state.draft={}; state.desc=""; state.amt=""; state.editing=null;
+    state.who=[...FRIENDS]; state.pickWho=false;
     if(editing) toast("Updated");
     render();
   }
@@ -1223,15 +1229,16 @@ function viewLog(t){
 
     ${state.mode==="equal" ? `
       <div style="margin-top:16px">
-        <label class="lbl">Split between</label>
-        <div class="faces">
+        <div class="splitrow">
+          <span class="lbl" style="margin:0">Split between</span>
+          <span class="splitwho">${whoIn().length === FRIENDS.length ? "everyone" : whoIn().join(", ")}</span>
+          <button class="x" onclick="state.pickWho=!state.pickWho;render()">${state.pickWho?"done":"change"}</button>
+        </div>
+        ${state.pickWho ? `<div class="faces">
           ${FRIENDS.map(f=>`<button class="face ${state.who.includes(f)?"on":""}"
             aria-pressed="${state.who.includes(f)}" onclick="toggleWho(${jq(f)})">
             <span class="ini">${initials(f)}</span><span>${esc(f)}</span></button>`).join("")}
-        </div>
-        <div class="hint" style="margin:9px 0 0">${
-          whoIn().length === FRIENDS.length ? "Everyone. Tap a face to leave them out."
-          : whoIn().length + " of " + FRIENDS.length + " · " + whoIn().join(", ")}</div>
+        </div>` : ""}
       </div>
 
       <div style="margin-top:16px">
