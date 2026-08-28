@@ -808,7 +808,7 @@ function calc(){
 
 // ---- actions ----
 function setTab(t){
-  state.tab=t; state.openPerson=null; state.editing=null;
+  state.tab=t; state.openPerson=null;
   ls(TK, t);                       // so a reload comes back where you were
   if(t==="route"){ startRoutePoll(); refreshQuiet().then(paintLive); }
   else {
@@ -871,7 +871,7 @@ function editExpense(id){
   const e = state.expenses.find(x => String(x.id) === String(id));
   if(!e) return;
   const sh = sharesOf(e);
-  setTab("log");                 // this resets state.editing, so fill in after it
+  setTab("log");
   state.editing = String(e.id);
   state.cat   = e.cat;
   state.desc  = e.desc || "";
@@ -886,12 +886,14 @@ function editExpense(id){
   state.pickWho = state.who.length !== FRIENDS.length;
   render();
   scrollTo({top:0, behavior:"smooth"});
+  toast("Editing " + (e.desc || "this payment"));
 }
 
 function cancelEdit(){
   state.editing = null; state.desc = ""; state.amt = ""; state.draft = {};
   state.who = [...FRIENDS]; state.pickWho = false;
   render();
+  toast("Edit cancelled");
 }
 
 async function addExpense(){
@@ -917,13 +919,13 @@ async function addExpense(){
   if(await push(editing ? "edit_expense" : "add_expense", row)){
     state.draft={}; state.desc=""; state.amt=""; state.editing=null;
     state.who=[...FRIENDS]; state.pickWho=false;
-    if(editing) toast("Updated");
+    toast(editing ? "Saved changes" : "Added " + desc);
     render();
   }
 }
 async function delExpense(id){
   if(!await ui.confirm("Remove this expense?", {ok:"Remove", danger:true})) return;
-  push("del_expense", {id:String(id)});
+  if(await push("del_expense", {id:String(id)})) toast("Removed");
 }
 
 async function markPaid(from,to,amount){
@@ -1226,6 +1228,9 @@ function viewLog(t){
       <button class="opt ${state.mode==="equal"?"on":""}" onclick="setMode('equal')">Split equally</button>
       <button class="opt ${state.mode==="each"?"on":""}" onclick="setMode('each')">Different amounts</button>
     </div>
+    <div class="hint" style="margin:9px 0 0">${state.mode==="equal"
+      ? "One bill, divided evenly between the people below."
+      : "One bill, but everyone's part is different. Type each part — they should add up to the bill."}</div>
 
     ${state.mode==="equal" ? `
       <div style="margin-top:16px">
@@ -1247,7 +1252,6 @@ function viewLog(t){
           value="${esc(state.amt)}" oninput="state.amt=this.value"></div>
       </div>
     ` : `
-      <div class="hint" style="margin:14px 0 6px">What each person's part comes to — 400 and 600 out of a 1,000 bill, or whatever it actually was. Leave anyone who owes nothing blank.</div>
       ${FRIENDS.map(f=>`
         <div class="row" style="padding:9px 0">
           <div class="ini">${initials(f)}</div>
@@ -1256,8 +1260,8 @@ function viewLog(t){
             aria-label="What ${esc(f)} ordered" value="${state.draft[f]??""}" placeholder="0" oninput="setDraft('${f}',this.value)"></div>
         </div>`).join("")}
       <div class="row" style="border-top:1px solid var(--edge)">
-        <div class="body"><div class="t">Bill total</div>
-          <div class="s">should match what ${state.payer} handed over</div></div>
+        <div class="body"><div class="t">These add up to</div>
+          <div class="s">which is what ${esc(canEdit()?state.payer:whoAmI())} paid in total</div></div>
         <div class="amt" id="draftTotal">${rupee(draftTotal())}</div>
       </div>
     `}
