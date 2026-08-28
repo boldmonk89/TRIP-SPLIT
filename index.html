@@ -147,6 +147,15 @@
   .link{border:0;background:none;padding:7px 0;font-size:13.5px;font-weight:600;color:var(--ink);
     text-decoration:underline;text-underline-offset:3px;min-height:24px}
   .opts{display:flex;flex-wrap:wrap;gap:8px}
+  .faces{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}
+  .face{display:flex;flex-direction:column;align-items:center;gap:5px;border:0;background:none;
+    padding:4px 0;font-size:10.5px;font-weight:600;color:var(--dim);min-height:44px;
+    transition:color var(--t),opacity var(--t)}
+  .face .ini{width:38px;height:38px;font-size:12.5px;background:var(--edge);color:var(--dim);
+    transition:background var(--t),color var(--t)}
+  .face.on{color:var(--ink)}
+  .face.on .ini{background:var(--ink);color:#fff}
+  .face:not(.on){opacity:.55}
   .opts.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
   .opts.grid .opt{padding:10px 4px;font-size:13px;text-align:center;white-space:nowrap}
   .opt{border:1px solid rgba(15,23,42,.14);background:rgba(255,255,255,.6);border-radius:100px;padding:9px 16px;
@@ -527,6 +536,7 @@ let state = {
   tab:"log", cat:"food", payer:FRIENDS[0], openPerson:null, showPlan:false,
   mode:"equal", draft:{},   // draft holds the per-person amounts being typed
   editing:null,             // id of the expense being changed, if any
+  who:[...FRIENDS],         // who this particular bill is split between
   desc:"", amt:"",          // kept here so a re-render cannot throw them away
 
   // who is looking: "owner" can change things, "viewer" can only read
@@ -536,6 +546,8 @@ let state = {
   gateMsg:"", joinToken:null, showOwnerLink:false,
 };
 const canEdit = () => state.role === "owner";
+// Your own row: yours to fix or remove, whoever you are.
+const canTouch = e => canEdit() || (e && e.payer === whoAmI());
 
 // Expenses saved before per-item splitting existed only had a total; treat those
 // as an even split so old entries keep working.
@@ -579,10 +591,18 @@ function applyLedger(d, cache){
 // (There was an offline queue here. It replayed a queued "add" after the row
 // had been deleted, so deleted expenses came back, and it was not worth the
 // trouble it caused.)
+// A member may log a payment they made and take it back again. The server
+// stamps the payer from their token, so "who paid" is never something the
+// client gets to claim.
+const MEMBER_OPS = ["add_expense", "edit_expense", "del_expense"];
+const mayWrite = op => canEdit() || MEMBER_OPS.includes(op);
+
 async function push(op, data){
-  if(!canEdit()) return false;
+  if(!mayWrite(op)) return false;
   try{
-    const res = await rpc("owner_apply", {p_secret:KEY, p_op:op, p_data:data||{}});
+    const res = canEdit()
+      ? await rpc("owner_apply",  {p_secret:KEY, p_op:op, p_data:data||{}})
+      : await rpc("member_apply", {p_token:KEY,  p_op:op, p_data:data||{}});
     if(res.error){ await ui.alert(res.error); return false; }
     applyLedger(res);
     return true;
@@ -820,6 +840,17 @@ function setPlan(key,v){ if(v!==""&&!isNaN(Number(v))){ state.plan[key]=Number(v
 function fixPlan(key,v){ if(v===""||isNaN(Number(v))) state.plan[key]=0; push("set_plan", state.plan); }
 
 function setMode(m){ state.mode=m; render(); }
+
+// Splitting equally is rarely all five - two people share a room, three share
+// a cab. Tapping a face drops them out of this bill; the total then divides
+// between whoever is left.
+function toggleWho(f){
+  const on = state.who.includes(f);
+  if(on && state.who.length === 1) return;      // somebody has to be paying
+  state.who = on ? state.who.filter(x => x !== f) : [...state.who, f];
+  render();
+}
+const whoIn = () => FRIENDS.filter(f => state.who.includes(f));
 async function pickPayer(){
   const v = await ui.pick("Paid by", FRIENDS, state.payer);
   if(v){ state.payer = v; render(); }
@@ -846,12 +877,15 @@ function editExpense(id){
   state.draft = e.mode === "each"
     ? Object.fromEntries(FRIENDS.map(f => [f, String(Math.round(num(sh[f])) || "")]))
     : {};
+  const had = FRIENDS.filter(f => Math.round(num(sh[f])) > 0);
+  state.who = had.length ? had : [...FRIENDS];
   render();
   scrollTo({top:0, behavior:"smooth"});
 }
 
 function cancelEdit(){
   state.editing = null; state.desc = ""; state.amt = ""; state.draft = {};
+  state.who = [...FRIENDS];
   render();
 }
 
@@ -862,7 +896,10 @@ async function addExpense(){
   if(state.mode==="equal"){
     const amt=Math.round(parseFloat(state.amt));
     if(!amt||amt<=0){ await ui.alert("Needs an amount", "Put in what the bill came to."); return; }
-    splitEqual(amt,N,state.expenses.length).forEach((v,i)=>shares[FRIENDS[i]]=v);
+    const inOn = whoIn();
+    if(!inOn.length){ await ui.alert("Nobody selected", "Pick at least one person to split this between."); return; }
+    FRIENDS.forEach(f => shares[f] = 0);
+    splitEqual(amt, inOn.length, state.expenses.length).forEach((v,i)=>shares[inOn[i]]=v);
   }else{
     for(const f of FRIENDS) shares[f]=Math.round(num(state.draft[f]));
     if(FRIENDS.some(f=>shares[f]<0)){ await ui.alert("Amounts can't be negative"); return; }
@@ -871,9 +908,9 @@ async function addExpense(){
   const editing = state.editing;
   const now = Date.now();
   const row = {id: editing || String(now), ts: now, cat:state.cat, desc,
-               payer:state.payer, mode:state.mode, shares};
+               payer: canEdit() ? state.payer : whoAmI(), mode:state.mode, shares};
   if(await push(editing ? "edit_expense" : "add_expense", row)){
-    state.draft={}; state.desc=""; state.amt=""; state.editing=null;
+    state.draft={}; state.desc=""; state.amt=""; state.editing=null; state.who=[...FRIENDS];
     if(editing) toast("Updated");
     render();
   }
@@ -1161,10 +1198,10 @@ function viewLog(t){
     byDay[byDay.length-1].items.push(e);
   });
   return `
-  ${canEdit() ? `
+  ${true ? `
   <section>
     <div class="shead">
-      <div class="kicker">${state.editing ? "Edit this payment" : "Log a payment"}</div>
+      <div class="kicker">${state.editing ? "Edit this payment" : canEdit() ? "Log a payment" : "Log what you paid"}</div>
       ${state.editing ? `<button class="link" onclick="cancelEdit()">Cancel</button>` : ""}
     </div>
     <div class="opts grid" style="margin-bottom:16px">
@@ -1172,23 +1209,38 @@ function viewLog(t){
     </div>
     <label class="lbl" for="f-desc">What was it</label>
     <input class="f" id="f-desc" value="${esc(state.desc)}" oninput="state.desc=this.value">
+    ${canEdit() ? `
     <div style="margin-top:14px">
       <label class="lbl" id="f-payer-lbl">Paid by</label>
       <button class="pick" aria-labelledby="f-payer-lbl" onclick="pickPayer()">${esc(state.payer)}</button>
-    </div>
+    </div>` : `
+    <div class="hint" style="margin-top:14px">Logged as paid by <b>${esc(whoAmI())}</b>.</div>`}
 
     <div class="opts" style="margin-top:18px">
       <button class="opt ${state.mode==="equal"?"on":""}" onclick="setMode('equal')">Split equally</button>
-      <button class="opt ${state.mode==="each"?"on":""}" onclick="setMode('each')">Each pays own</button>
+      <button class="opt ${state.mode==="each"?"on":""}" onclick="setMode('each')">Different amounts</button>
     </div>
 
     ${state.mode==="equal" ? `
+      <div style="margin-top:16px">
+        <label class="lbl">Split between</label>
+        <div class="faces">
+          ${FRIENDS.map(f=>`<button class="face ${state.who.includes(f)?"on":""}"
+            aria-pressed="${state.who.includes(f)}" onclick="toggleWho(${jq(f)})">
+            <span class="ini">${initials(f)}</span><span>${esc(f)}</span></button>`).join("")}
+        </div>
+        <div class="hint" style="margin:9px 0 0">${
+          whoIn().length === FRIENDS.length ? "Everyone. Tap a face to leave them out."
+          : whoIn().length + " of " + FRIENDS.length + " · " + whoIn().join(", ")}</div>
+      </div>
+
       <div style="margin-top:16px">
         <label class="lbl" for="f-amt">Total amount</label>
         <div class="money big"><span>₹</span><input type="number" inputmode="numeric" id="f-amt" placeholder="0"
           value="${esc(state.amt)}" oninput="state.amt=this.value"></div>
       </div>
     ` : `
+      <div class="hint" style="margin:14px 0 6px">What each person's part comes to — 400 and 600 out of a 1,000 bill, or whatever it actually was. Leave anyone who owes nothing blank.</div>
       ${FRIENDS.map(f=>`
         <div class="row" style="padding:9px 0">
           <div class="ini">${initials(f)}</div>
@@ -1220,7 +1272,9 @@ function viewLog(t){
           const eaters=FRIENDS.filter(f=>Math.round(num(sh[f]))>0);
           const sub = e.mode==="each"
             ? eaters.map(f=>`${f} ${rupee(sh[f])}`).join(" · ")
-            : `${rupee(Math.round(amtOf(e)/N))} each`;
+            : eaters.length === N
+              ? `${rupee(Math.round(amtOf(e)/N))} each`
+              : `${rupee(Math.round(amtOf(e)/eaters.length))} each · ${eaters.join(", ")}`;
           return `<div class="row">
             <div class="tag">${CATS[e.cat]}</div>
             <div class="body">
@@ -1229,7 +1283,7 @@ function viewLog(t){
             </div>
             <div class="acts">
               <div class="amt">${rupee(amtOf(e))}</div>
-              ${canEdit()?`<span><button class="x" onclick="editExpense('${e.id}')">edit</button>
+              ${canTouch(e)?`<span><button class="x" onclick="editExpense('${e.id}')">edit</button>
                 <button class="x" style="margin-left:10px" onclick="delExpense('${e.id}')">remove</button></span>`:""}
             </div>
           </div>`;
