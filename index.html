@@ -445,8 +445,8 @@ const CATS = { car:"Car", fuel:"Fuel", toll:"Toll", stay:"Stay", food:"Food", ac
 // where that differs (Char Dukan is up in Landour, not on Mall Road).
 const STOPS = [
   { name:"Samaypur Badli", note:"Start",                        lat:28.7387, lng:77.1385, kind:"stop" },
-  { name:"Haridwar",       note:"Har Ki Pauri, Ganga aarti",    lat:29.9457, lng:78.1642, kind:"stop" },
-  { name:"Rishikesh",      note:"Laxman Jhula, the river",      lat:30.0869, lng:78.2676, kind:"stop" },
+  { name:"Haridwar",       note:"Har Ki Pauri, Ganga aarti",    lat:29.9566, lng:78.1709, kind:"stop" },
+  { name:"Rishikesh",      note:"Laxman Jhula, the river",      lat:30.1301, lng:78.3258, kind:"stop" },
   { name:"Dehradun",       note:"Last flat ground before the climb", lat:30.3165, lng:78.0322, kind:"stop" },
 
   { name:"Mussoorie",      note:"Queen of the hills",           lat:30.4599, lng:78.0664, kind:"stop" },
@@ -458,7 +458,7 @@ const STOPS = [
   { name:"Atal Udhyan",    note:"Municipal garden",             lat:30.4640, lng:78.0530, kind:"see" },
   { name:"George Everest House", note:"The surveyor's old house", lat:30.4550, lng:78.0300, kind:"see" },
   { name:"Cloud End",      note:"Where Mussoorie runs out",     lat:30.4620, lng:78.0150, kind:"see" },
-  { name:"Kempty Falls",   note:"Waterfall",                    lat:30.4833, lng:78.0167, kind:"see" },
+  { name:"Kempty Falls",   note:"Waterfall",                    lat:30.4871, lng:78.0361, kind:"see" },
 
   { name:"Landour",        note:"Quiet cantonment",             lat:30.4560, lng:78.1050, kind:"stop" },
   { name:"Char Dukan",     note:"Maggi and pancakes",           lat:30.4577, lng:78.1093, kind:"see" },
@@ -467,7 +467,7 @@ const STOPS = [
   { name:"SOHAM Himalayan Centre", note:"Art museum",           lat:30.4590, lng:78.1160, kind:"see" },
 
   { name:"Dhanaulti",      note:"Pine forests",                 lat:30.4180, lng:78.2400, kind:"stop" },
-  { name:"Eco Park",       note:"Amber and Dhara gardens",      lat:30.4197, lng:78.2372, kind:"see" },
+  { name:"Eco Park",       note:"Amber and Dhara gardens",      lat:30.4234, lng:78.2480, kind:"see" },
   { name:"Surkanda Devi",  note:"Temple trek, 2750m",           lat:30.4053, lng:78.2836, kind:"see" },
 
   { name:"Samaypur Badli", note:"Back home",                    lat:28.7387, lng:77.1385, kind:"stop" },
@@ -503,7 +503,7 @@ const CAR_DAYS = 3;
 // Mileage is deliberately worst-case — a retrofitted CNG kit on a loaded Creta,
 // and petrol on steep sections with five up, luggage and the AC running.
 const PLAN = {
-  cngKm:525, cngEff:12, cngRate:85,    // 275km up via Haridwar and Rishikesh, ~250km back
+  cngKm:540, cngEff:12, cngRate:85,    // 285km up via Har Ki Pauri and Laxman Jhula, ~255km back
   petKm:140, petEff:9,  petRate:105,   // 70km each way, Dehradun -> Mussoorie -> Dhanaulti
   buffer:100,                          // local running up there, charged at petrol rates
   toll:1340,                           // Rs670 each way, FASTag only
@@ -549,7 +549,7 @@ const draftTotal = () => FRIENDS.reduce((s,f)=>s+Math.round(num(state.draft[f]))
 // token for everyone else. The server decides which it is; the app never does.
 const KK = "tripsplit5:key", CK = "tripsplit5:cache", JK = "tripsplit5:join",
       MK = "tripsplit5:migrated", IK = "tripsplit5:installed",
-      SHK = "tripsplit5:noshare", RK = "tripsplit5:roadline2", TK = "tripsplit5:tab",
+      SHK = "tripsplit5:noshare", RK = "tripsplit5:roadline3", TK = "tripsplit5:tab",
       MSK = "tripsplit5:mapstyle";
 let KEY = null;
 
