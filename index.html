@@ -537,6 +537,8 @@ let state = {
   mode:"equal", draft:{},   // draft holds the per-person amounts being typed
   editing:null,             // id of the expense being changed, if any
   who:[...FRIENDS],         // who this particular bill is split between
+  payers:[FRIENDS[0]],      // who put money in; more than one is allowed
+  paid:{},                  // how much each of them put in, when it is several
   desc:"", amt:"",          // kept here so a re-render cannot throw them away
 
   // who is looking: "owner" can change things, "viewer" can only read
@@ -551,6 +553,12 @@ const canTouch = e => canEdit() || (e && e.payer === whoAmI());
 
 // Expenses saved before per-item splitting existed only had a total; treat those
 // as an even split so old entries keep working.
+// Who put money in for this bill, and how much. Rows from before bills could
+// have two payers just have the one, for the whole amount.
+const paidOf = e => (e.paidBy && Object.keys(e.paidBy).length)
+  ? e.paidBy
+  : { [e.payer]: amtOf(e) };
+
 const sharesOf = e => e.shares || Object.fromEntries(
   splitEqual(Math.round(num(e.amount)), N, 0).map((v,i)=>[FRIENDS[i],v]));
 const amtOf = e => FRIENDS.reduce((s,f)=>s+Math.round(num(sharesOf(e)[f])),0);
@@ -770,15 +778,30 @@ function calc(){
   let total=0;
 
   for(const e of state.expenses){
-    const sh=sharesOf(e);
-    paid[e.payer]+=amtOf(e); total+=amtOf(e);
+    const sh = sharesOf(e), pb = paidOf(e);
+    total += amtOf(e);
+
+    const payers = Object.entries(pb)
+      .map(([p,v]) => [p, Math.round(num(v))])
+      .filter(([,v]) => v > 0);
+    const putIn = payers.reduce((s,[,v]) => s+v, 0);
+    for(const [p,v] of payers) paid[p] += v;
+
     for(const f of FRIENDS){
-      const part=Math.round(num(sh[f]));
-      share[f]+=part;
-      if(f!==e.payer && part>0){
-        debt[f][e.payer]+=part;
-        why[f][e.payer][e.cat]=(why[f][e.payer][e.cat]||0)+part;
-      }
+      const part = Math.round(num(sh[f]));
+      share[f] += part;
+      if(part <= 0 || !putIn) continue;
+      // What f owes goes to each payer in proportion to what that payer put
+      // in. The last one takes the rounding remainder so it still adds up.
+      let done = 0;
+      payers.forEach(([p,v], i) => {
+        const cut = i === payers.length-1 ? part - done : Math.round(part * v / putIn);
+        done += cut;
+        if(p !== f && cut > 0){
+          debt[f][p] += cut;
+          why[f][p][e.cat] = (why[f][p][e.cat] || 0) + cut;
+        }
+      });
     }
   }
 
@@ -868,9 +891,28 @@ function updateShareLine(){
   const el = document.getElementById("shareLine");
   if(el) el.textContent = shareSummary();
 }
-async function pickPayer(){
-  const v = await ui.pick("Paid by", FRIENDS, state.payer);
-  if(v){ state.payer = v; render(); }
+function togglePayer(f){
+  const on = state.payers.includes(f);
+  if(on && state.payers.length === 1) return;       // somebody had to pay
+  state.payers = on ? state.payers.filter(x => x !== f)
+                    : [...state.payers, f];
+  state.payer = state.payers[0];
+  render();
+}
+const payersIn = () => FRIENDS.filter(f => state.payers.includes(f));
+const paidTotal = () => payersIn().reduce((s,f) => s + Math.round(num(state.paid[f])), 0);
+
+function setPaid(f, v){
+  state.paid[f] = v;
+  const el = document.getElementById("paidTotal");
+  if(el) el.textContent = rupee(paidTotal());
+}
+
+// One payer covers the whole bill; several have to say who put in what.
+function paidMap(total){
+  const on = payersIn();
+  if(on.length === 1) return { [on[0]]: total };
+  return Object.fromEntries(on.map(f => [f, Math.round(num(state.paid[f]))]));
 }
 // What is still unspoken for. Rewritten in place so the keyboard stays up.
 function draftNote(){
@@ -905,7 +947,11 @@ function editExpense(id){
   state.editing = String(e.id);
   state.cat   = e.cat;
   state.desc  = e.desc || "";
-  state.payer = e.payer;
+  const pb = paidOf(e);
+  state.payers = FRIENDS.filter(f => Math.round(num(pb[f])) > 0);
+  if(!state.payers.length) state.payers = [e.payer];
+  state.payer  = state.payers[0];
+  state.paid   = Object.fromEntries(state.payers.map(f => [f, String(Math.round(num(pb[f])) || "")]));
   state.mode  = e.mode || "equal";
   state.amt   = e.mode === "each" ? "" : String(amtOf(e));
   state.draft = e.mode === "each"
@@ -920,7 +966,7 @@ function editExpense(id){
 
 function cancelEdit(){
   state.editing = null; state.desc = ""; state.amt = ""; state.draft = {};
-  state.who = [...FRIENDS];
+  state.who = [...FRIENDS]; state.payers = [FRIENDS[0]]; state.paid = {};
   render();
   toast("Edit cancelled");
 }
@@ -951,13 +997,31 @@ async function addExpense(){
       if(!ok) return;
     }
   }
+  const total = FRIENDS.reduce((a,f) => a + Math.round(num(shares[f])), 0);
+
+  if(canEdit() && payersIn().length > 1){
+    const put = paidTotal();
+    if(put !== total){
+      const ok = await ui.confirm("What they put in does not match the bill", {
+        body: "The bill comes to " + rupee(total) + ", but the payers add up to "
+            + rupee(put) + ". Fix the amounts, or save and the balances will be off.",
+        ok: "Save anyway",
+      });
+      if(!ok) return;
+    }
+  }
+
   const editing = state.editing;
   const now = Date.now();
+  // whoever put in the most is kept in payer, so anything reading that alone
+  // still names the right person
+  const paidBy = canEdit() ? paidMap(total) : { [whoAmI()]: total };
+  const main = Object.entries(paidBy).sort((a,b) => num(b[1]) - num(a[1]))[0][0];
   const row = {id: editing || String(now), ts: now, cat:state.cat, desc,
-               payer: canEdit() ? state.payer : whoAmI(), mode:state.mode, shares};
+               payer: main, paidBy, mode:state.mode, shares};
   if(await push(editing ? "edit_expense" : "add_expense", row)){
     state.draft={}; state.desc=""; state.amt=""; state.editing=null;
-    state.who=[...FRIENDS];
+    state.who=[...FRIENDS]; state.payers=[FRIENDS[0]]; state.paid={};
     toast(editing ? "Saved changes" : "Added " + desc);
     render();
   }
@@ -1257,9 +1321,28 @@ function viewLog(t){
     <label class="lbl" for="f-desc">What was it</label>
     <input class="f" id="f-desc" value="${esc(state.desc)}" oninput="state.desc=this.value">
     ${canEdit() ? `
-    <div style="margin-top:14px">
-      <label class="lbl" id="f-payer-lbl">Paid by</label>
-      <button class="pick" aria-labelledby="f-payer-lbl" onclick="pickPayer()">${esc(state.payer)}</button>
+    <div style="margin-top:16px">
+      <label class="lbl">Who paid</label>
+      <div class="faces">
+        ${FRIENDS.map(f=>`<button class="face ${state.payers.includes(f)?"on":""}"
+          aria-pressed="${state.payers.includes(f)}" onclick="togglePayer(${jq(f)})">
+          <span class="ini">${initials(f)}</span><span>${esc(f)}</span></button>`).join("")}
+      </div>
+      ${payersIn().length === 1
+        ? `<div class="hint" style="margin:10px 0 0">${esc(payersIn()[0])} put down the whole bill. Tap another face if two of you split the payment.</div>`
+        : `<div class="hint" style="margin:10px 0 4px">How much each of them actually handed over:</div>
+           ${payersIn().map(f=>`
+             <div class="row" style="padding:8px 0">
+               <div class="ini">${initials(f)}</div>
+               <div class="body"><div class="t">${esc(f)}</div></div>
+               <div class="money" style="width:132px"><span>₹</span><input type="number" inputmode="numeric"
+                 aria-label="What ${esc(f)} put in" value="${state.paid[f]??""}" placeholder="0"
+                 oninput="setPaid(${jq(f)},this.value)"></div>
+             </div>`).join("")}
+           <div class="row" style="border-top:1px solid var(--edge)">
+             <div class="body"><div class="t">They put in</div></div>
+             <div class="amt" id="paidTotal">${rupee(paidTotal())}</div>
+           </div>`}
     </div>` : `
     <div class="hint" style="margin-top:14px">Logged as paid by <b>${esc(whoAmI())}</b>.</div>`}
 
@@ -1330,7 +1413,7 @@ function viewLog(t){
             <div class="tag">${CATS[e.cat]}</div>
             <div class="body">
               <div class="t">${esc(e.desc)}</div>
-              <div class="s">${e.payer} paid · ${sub}</div>
+              <div class="s">${Object.keys(paidOf(e)).join(" and ")} paid · ${sub}</div>
             </div>
             <div class="acts">
               <div class="amt">${rupee(amtOf(e))}</div>
