@@ -425,9 +425,9 @@
 <script>
 const FRIENDS = ["Archit","Satwik","Kripansh","Tejas","Akshat"];
 const OWNER = "Tejas";   // the one holding the owner link; everyone else reads only
-const TRIP = "Delhi · Haridwar · Rishikesh · Mussoorie · Landour · Dhanaulti · 8–11 Sep";
+const TRIP = "Delhi · Neemrana · Bhangarh Fort · Chittorgarh Fort · Udaipur · 8–11 Sep";
 // The header has one line to play with, and every stop is on the Route tab.
-const TRIP_SHORT = "Delhi · Mussoorie · Dhanaulti · 8–11 Sep";
+const TRIP_SHORT = "Delhi · Udaipur · 8–11 Sep";
 
 // ---- the shared ledger ----
 // The key below is meant to be public — on its own it can reach nothing. Every
@@ -453,50 +453,46 @@ const CATS = { car:"Car", fuel:"Fuel", toll:"Toll", stay:"Stay", food:"Food", ac
 // links are built from, so they have to be the real place, not the town centre
 // where that differs (Char Dukan is up in Landour, not on Mall Road).
 const STOPS = [
-  { name:"Samaypur Badli", note:"Start",                        lat:28.7387, lng:77.1385, kind:"stop" },
-  { name:"Haridwar",       note:"Har Ki Pauri, Ganga aarti",    lat:29.9566, lng:78.1709, kind:"stop" },
-  { name:"Rishikesh",      note:"Laxman Jhula, the river",      lat:30.1301, lng:78.3258, kind:"stop" },
-  { name:"Dehradun",       note:"Last flat ground before the climb", lat:30.3165, lng:78.0322, kind:"stop" },
+  { name:"Samaypur Badli",   note:"Start",                          lat:28.7387, lng:77.1385, kind:"stop" },
+  { name:"Neemrana",         note:"Fort-Palace, a natural overnight halt", lat:27.9938, lng:76.3884, kind:"stop" },
+  { name:"Bhangarh Fort",    note:"India's most-talked-about “haunted” fort", lat:27.0955, lng:76.2878, kind:"stop" },
+  { name:"Chittorgarh Fort", note:"The largest fort complex in India", lat:24.8817, lng:74.6467, kind:"stop" },
 
-  { name:"Mussoorie",      note:"Queen of the hills",           lat:30.4599, lng:78.0664, kind:"stop" },
-  { name:"Mall Road",      note:"Shopping, evening walk",       lat:30.4562, lng:78.0700, kind:"see" },
-  { name:"Library Bazar",  note:"The far end of Mall Road",     lat:30.4550, lng:78.0620, kind:"see" },
-  { name:"Gun Hill",       note:"Ropeway viewpoint",            lat:30.4585, lng:78.0680, kind:"see" },
-  { name:"Camels Back Road", note:"3km walk, good at sunset",   lat:30.4590, lng:78.0760, kind:"see" },
-  { name:"The Tavern",     note:"Dining on Mall Road",          lat:30.4562, lng:78.0690, kind:"see" },
-  { name:"Atal Udhyan",    note:"Municipal garden",             lat:30.4640, lng:78.0530, kind:"see" },
-  { name:"George Everest House", note:"The surveyor's old house", lat:30.4550, lng:78.0300, kind:"see" },
-  { name:"Cloud End",      note:"Where Mussoorie runs out",     lat:30.4620, lng:78.0150, kind:"see" },
-  { name:"Kempty Falls",   note:"Waterfall",                    lat:30.4871, lng:78.0361, kind:"see" },
+  { name:"Udaipur",          note:"City of Lakes",                  lat:24.5761, lng:73.6836, kind:"stop" },
+  { name:"Lake Pichola",     note:"The lake the city is built around", lat:24.5696, lng:73.6722, kind:"see" },
+  { name:"Jagdish Temple",   note:"Carved Hindu temple, 1651",       lat:24.5807, lng:73.6846, kind:"see" },
+  { name:"Bagore Ki Haveli", note:"Haveli museum · the Dharohar dance show at night", lat:24.5797, lng:73.6824, kind:"see" },
+  { name:"Monsoon Palace",   note:"Sajjangarh, hilltop sunset",      lat:24.5932, lng:73.6395, kind:"see" },
+  { name:"Saheliyon Ki Bari", note:"Garden of the maidens, fountains", lat:24.6031, lng:73.6855, kind:"see" },
+  { name:"Ambrai Ghat",      note:"Best sunset view of City Palace", lat:24.5777, lng:73.6799, kind:"see" },
+  { name:"Gangaur Ghat",     note:"On Lake Pichola, near the old city", lat:24.5805, lng:73.6826, kind:"see" },
+  { name:"Fateh Sagar Lake", note:"Second lake, north of the city",  lat:24.6021, lng:73.6721, kind:"see" },
+  { name:"Karni Mata Temple", note:"Hilltop temple, ropeway up",     lat:24.5660, lng:73.6892, kind:"see" },
+  { name:"Shilpgram",        note:"Rural arts-and-crafts village",   lat:24.6131, lng:73.6634, kind:"see" },
+  { name:"Vintage Car Museum", note:"The Maharana's old car collection", lat:24.5761, lng:73.6945, kind:"see" },
+  { name:"Bada Bazaar",      note:"Old-city shopping street",        lat:24.5814, lng:73.6900, kind:"see" },
+  { name:"Ambrai Restaurant", note:"Lakeside dining, City Palace view", lat:24.5782, lng:73.6800, kind:"see" },
 
-  { name:"Landour",        note:"Quiet cantonment",             lat:30.4560, lng:78.1050, kind:"stop" },
-  { name:"Char Dukan",     note:"Maggi and pancakes",           lat:30.4577, lng:78.1093, kind:"see" },
-  { name:"Landour Bakehouse", note:"The old bakery",            lat:30.4573, lng:78.1085, kind:"see" },
-  { name:"Lal Tibba",      note:"Highest point, sunrise",       lat:30.4614, lng:78.1000, kind:"see" },
-  { name:"SOHAM Himalayan Centre", note:"Art museum",           lat:30.4590, lng:78.1160, kind:"see" },
-
-  { name:"Dhanaulti",      note:"Pine forests",                 lat:30.4180, lng:78.2400, kind:"stop" },
-  { name:"Eco Park",       note:"Amber and Dhara gardens",      lat:30.4234, lng:78.2480, kind:"see" },
-  { name:"Surkanda Devi",  note:"Temple trek, 2750m",           lat:30.4053, lng:78.2836, kind:"see" },
-
-  { name:"Samaypur Badli", note:"Back home",                    lat:28.7387, lng:77.1385, kind:"stop" },
+  { name:"Samaypur Badli",   note:"Back home",                       lat:28.7387, lng:77.1385, kind:"stop" },
 ];
 
-// What the highway actually costs and what it is called, going up. FASTag
-// plazas on NH-334/NH-7 via Meerut and Muzaffarnagar.
+// Distance and time on every leg came from OSRM, the same routing engine the
+// in-app map uses - not estimated. Highway names are given only where they are
+// certain; the Bhangarh detour runs through smaller roads whose exact numbers
+// are not worth guessing at. Toll plazas on this route are not named for the
+// same reason - NH-48 has FASTag tolls throughout, Maps will show the live
+// amount when you actually drive it.
 const ROADS = [
-  { leg:"Delhi \u2192 Haridwar", via:"NH-334 via Meerut, Muzaffarnagar, Roorkee",
-    tolls:["Bhojpur (Meerut)","Sikri Khurd","Bhagwanpur","Manoharpur"], note:"~205km \u00b7 5 hrs" },
-  { leg:"Haridwar \u2192 Rishikesh", via:"NH-34 along the Ganga",
-    tolls:[], note:"~25km \u00b7 45 min" },
-  { leg:"Rishikesh \u2192 Dehradun", via:"NH-7",
-    tolls:[], note:"~45km \u00b7 1 hr 15 min" },
-  { leg:"Dehradun \u2192 Mussoorie", via:"Dehradun\u2013Mussoorie hill road",
-    tolls:["Dehradun bypass"], note:"~35km \u00b7 1 hr 15 min, all climb" },
-  { leg:"Mussoorie \u2194 Landour \u2194 Dhanaulti", via:"Local hill roads",
-    tolls:[], note:"~40km \u00b7 petrol, steep" },
-  { leg:"Dhanaulti \u2192 Delhi", via:"Down to Dehradun, NH-7 \u2192 NH-334",
-    tolls:["Dehradun bypass","Manoharpur","Bhagwanpur","Sikri Khurd","Bhojpur (Meerut)"], note:"~310km \u00b7 7\u20138 hrs" },
+  { leg:"Delhi → Neemrana", via:"NH-48",
+    tolls:["Tolls apply · FASTag, live pricing in Maps"], note:"~139km · 1 hr 53 min" },
+  { leg:"Neemrana → Bhangarh Fort", via:"Off NH-48, via Alwar on smaller roads",
+    tolls:[], note:"~149km · 2 hr 5 min" },
+  { leg:"Bhangarh Fort → Chittorgarh Fort", via:"Via Jaipur, then toward Bhilwara",
+    tolls:["Tolls apply · FASTag, live pricing in Maps"], note:"~386km · 5 hrs — by far the longest single leg" },
+  { leg:"Chittorgarh Fort → Udaipur", via:"NH-48",
+    tolls:["Tolls apply · FASTag, live pricing in Maps"], note:"~121km · 1 hr 36 min" },
+  { leg:"Udaipur → Delhi", via:"NH-48 direct, via Jaipur — not retracing the forts",
+    tolls:["Tolls apply · FASTag, live pricing in Maps"], note:"~675km · 8 hr 28 min" },
 ];
 
 // The one genuinely fixed cost. Everything else gets decided on the road and
@@ -505,17 +501,23 @@ const CAR_RATE = 3300;
 const CAR_DAYS = 3;
 
 // Planning projection only — never touches anyone's balance.
-// Going up we now stop at Haridwar and Rishikesh, so the highway leg is
-// Delhi -> Haridwar -> Rishikesh -> Dehradun, about 275km rather than the 227km
-// a straight run to Dehradun would be. Coming back is the direct road, ~250km.
-// Then ~35km of climb to Mussoorie, and Landour and Dhanaulti on top of that.
-// Mileage is deliberately worst-case — a retrofitted CNG kit on a loaded Creta,
-// and petrol on steep sections with five up, luggage and the AC running.
+// This route is not a scaled-up version of the old one. Delhi -> Udaipur via
+// the three forts is ~795km one way (OSRM); the direct return is ~675km —
+// round trip ~1,470km, against ~560km for the old Mussoorie loop. Almost all
+// of it is highway/plains, not the hill climb the old petrol-buffer line was
+// costing. cngKm below is that full round trip on the assumption the car can
+// run CNG the whole way — that needs your own check, not mine: CNG station
+// coverage through rural Alwar/Rajgarh and around the forts is not something
+// I can verify. petKm is a placeholder for local running around Udaipur and
+// the forts (Monsoon Palace's climb, driving between ghats and museums) —
+// tune it once you know the actual plan.
+// Mileage is deliberately worst-case — a retrofitted CNG kit on a loaded
+// Creta, and petrol on steep sections with five up, luggage and the AC running.
 const PLAN = {
-  cngKm:540, cngEff:12, cngRate:85,    // 285km up via Har Ki Pauri and Laxman Jhula, ~255km back
-  petKm:140, petEff:9,  petRate:105,   // 70km each way, Dehradun -> Mussoorie -> Dhanaulti
-  buffer:100,                          // local running up there, charged at petrol rates
-  toll:1340,                           // Rs670 each way, FASTag only
+  cngKm:1470, cngEff:12, cngRate:85,   // round trip, all legs, on the assumption above
+  petKm:60,   petEff:9,  petRate:105,  // guessed local running in and around Udaipur - fix this
+  buffer:60,                           // Monsoon Palace climb, ghat-to-ghat, museum hopping
+  toll:2200,                           // rough guess only - NH-48 tolls not priced here, check Maps
 };
 
 const rupee = n => "₹" + Math.round(n).toLocaleString("en-IN");
@@ -569,7 +571,7 @@ const draftTotal = () => FRIENDS.reduce((s,f)=>s+Math.round(num(state.draft[f]))
 // token for everyone else. The server decides which it is; the app never does.
 const KK = "tripsplit5:key", CK = "tripsplit5:cache", JK = "tripsplit5:join",
       MK = "tripsplit5:migrated", IK = "tripsplit5:installed",
-      SHK = "tripsplit5:noshare", RK = "tripsplit5:roadline3", TK = "tripsplit5:tab",
+      SHK = "tripsplit5:noshare", RK = "tripsplit5:roadline-udaipur", TK = "tripsplit5:tab",
       MSK = "tripsplit5:mapstyle";
 let KEY = null;
 
