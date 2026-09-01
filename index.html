@@ -520,7 +520,12 @@ const PLAN = {
   cngKm:1504, cngEff:12, cngRate:85,   // round trip, on the CNG-the-whole-way assumption above
   petKm:60,   petEff:9,  petRate:105,  // guessed local running in and around Udaipur - fix this
   buffer:60,                           // Monsoon Palace climb, ghat-to-ghat, museum hopping
-  toll:1445,                           // verified for the direct return only - outbound-via-forts not priced, likely more
+  // Rs1,445 is real, but only for ONE direction (the direct 709km return).
+  // The outbound leg via the forts is 795km on a different route entirely and
+  // has no real number yet - it is very likely more, not less, than the
+  // return leg. Doubling the one real figure as a floor until that number
+  // comes in; treat this as an underestimate, not a total.
+  toll:2890,
 };
 
 const rupee = n => "₹" + Math.round(n).toLocaleString("en-IN");
