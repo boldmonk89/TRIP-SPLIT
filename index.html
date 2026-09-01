@@ -457,6 +457,7 @@ const STOPS = [
   { name:"Neemrana",         note:"Fort-Palace, a natural overnight halt", lat:27.9938, lng:76.3884, kind:"stop" },
   { name:"Bhangarh Fort",    note:"India's most-talked-about “haunted” fort", lat:27.0955, lng:76.2878, kind:"stop" },
   { name:"Chittorgarh Fort", note:"The largest fort complex in India", lat:24.8817, lng:74.6467, kind:"stop" },
+  { name:"Meera Temple",     note:"Inside the fort, ~1km walk",      lat:24.8904, lng:74.6450, kind:"see" },
 
   { name:"Udaipur",          note:"City of Lakes",                  lat:24.5761, lng:73.6836, kind:"stop" },
   { name:"Lake Pichola",     note:"The lake the city is built around", lat:24.5696, lng:73.6722, kind:"see" },
@@ -491,8 +492,8 @@ const ROADS = [
     tolls:["Tolls apply · FASTag, live pricing in Maps"], note:"~386km · 5 hrs — by far the longest single leg" },
   { leg:"Chittorgarh Fort → Udaipur", via:"NH-48",
     tolls:["Tolls apply · FASTag, live pricing in Maps"], note:"~121km · 1 hr 36 min" },
-  { leg:"Udaipur → Delhi", via:"NH-48 direct, via Jaipur — not retracing the forts",
-    tolls:["Tolls apply · FASTag, live pricing in Maps"], note:"~675km · 8 hr 28 min" },
+  { leg:"Udaipur → Delhi", via:"NH-52 direct, via Jaipur — not retracing the forts",
+    tolls:["₹1,445 in tolls (verified, one way)"], note:"709km · 8 hr 50 min · ₹4,505 in petrol" },
 ];
 
 // The one genuinely fixed cost. Everything else gets decided on the road and
@@ -514,10 +515,12 @@ const CAR_DAYS = 3;
 // Mileage is deliberately worst-case — a retrofitted CNG kit on a loaded
 // Creta, and petrol on steep sections with five up, luggage and the AC running.
 const PLAN = {
-  cngKm:1470, cngEff:12, cngRate:85,   // round trip, all legs, on the assumption above
+  // 795km outbound via the forts (OSRM) + 709km direct return (a real toll
+  // calculator, not OSRM) = 1,504km round trip.
+  cngKm:1504, cngEff:12, cngRate:85,   // round trip, on the CNG-the-whole-way assumption above
   petKm:60,   petEff:9,  petRate:105,  // guessed local running in and around Udaipur - fix this
   buffer:60,                           // Monsoon Palace climb, ghat-to-ghat, museum hopping
-  toll:2200,                           // rough guess only - NH-48 tolls not priced here, check Maps
+  toll:1445,                           // verified for the direct return only - outbound-via-forts not priced, likely more
 };
 
 const rupee = n => "₹" + Math.round(n).toLocaleString("en-IN");
