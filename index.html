@@ -425,9 +425,9 @@
 <script>
 const FRIENDS = ["Archit","Satwik","Kripansh","Tejas","Akshat"];
 const OWNER = "Tejas";   // the one holding the owner link; everyone else reads only
-const TRIP = "Delhi · Neemrana · Bhangarh Fort · Chittorgarh Fort · Udaipur · 8–11 Sep";
+const TRIP = "Delhi · Udaipur · 7–10 Sep";
 // The header has one line to play with, and every stop is on the Route tab.
-const TRIP_SHORT = "Delhi · Udaipur · 8–11 Sep";
+const TRIP_SHORT = "Delhi · Udaipur · 7–10 Sep";
 
 // ---- the shared ledger ----
 // The key below is meant to be public — on its own it can reach nothing. Every
@@ -454,11 +454,6 @@ const CATS = { car:"Car", fuel:"Fuel", toll:"Toll", stay:"Stay", food:"Food", ac
 // where that differs (Char Dukan is up in Landour, not on Mall Road).
 const STOPS = [
   { name:"Samaypur Badli",   note:"Start",                          lat:28.7387, lng:77.1385, kind:"stop" },
-  { name:"Neemrana",         note:"Fort-Palace, a natural overnight halt", lat:27.9938, lng:76.3884, kind:"stop" },
-  { name:"Bhangarh Fort",    note:"India's most-talked-about “haunted” fort", lat:27.0955, lng:76.2878, kind:"stop" },
-  { name:"Chittorgarh Fort", note:"The largest fort complex in India", lat:24.8817, lng:74.6467, kind:"stop" },
-  { name:"Meera Temple",     note:"Inside the fort, ~1km walk",      lat:24.8904, lng:74.6450, kind:"see" },
-
   { name:"Udaipur",          note:"City of Lakes",                  lat:24.5761, lng:73.6836, kind:"stop" },
   { name:"Lake Pichola",     note:"The lake the city is built around", lat:24.5696, lng:73.6722, kind:"see" },
   { name:"Jagdish Temple",   note:"Carved Hindu temple, 1651",       lat:24.5807, lng:73.6846, kind:"see" },
@@ -477,23 +472,16 @@ const STOPS = [
   { name:"Samaypur Badli",   note:"Back home",                       lat:28.7387, lng:77.1385, kind:"stop" },
 ];
 
-// Distance and time on every leg came from OSRM, the same routing engine the
-// in-app map uses - not estimated. Highway names are given only where they are
-// certain; the Bhangarh detour runs through smaller roads whose exact numbers
-// are not worth guessing at. Toll plazas on this route are not named for the
-// same reason - NH-48 has FASTag tolls throughout, Maps will show the live
-// amount when you actually drive it.
+// The forts got cut: leaving evening of the 7th and back by evening of the
+// 10th leaves no real room for 795km via three stops (~10.5 hrs one way) plus
+// a direct 709km return, and Bhangarh Fort has an actual ASI rule against
+// being there after sunset - a night departure could reach it closed.
+// Direct route, both ways, from a real toll+fuel calculator - not estimated.
 const ROADS = [
-  { leg:"Delhi → Neemrana", via:"NH-48",
-    tolls:["Tolls apply · FASTag, live pricing in Maps"], note:"~139km · 1 hr 53 min" },
-  { leg:"Neemrana → Bhangarh Fort", via:"Off NH-48, via Alwar on smaller roads",
-    tolls:[], note:"~149km · 2 hr 5 min" },
-  { leg:"Bhangarh Fort → Chittorgarh Fort", via:"Via Jaipur, then toward Bhilwara",
-    tolls:["Tolls apply · FASTag, live pricing in Maps"], note:"~386km · 5 hrs — by far the longest single leg" },
-  { leg:"Chittorgarh Fort → Udaipur", via:"NH-48",
-    tolls:["Tolls apply · FASTag, live pricing in Maps"], note:"~121km · 1 hr 36 min" },
-  { leg:"Udaipur → Delhi", via:"NH-52 direct, via Jaipur — not retracing the forts",
-    tolls:["₹1,445 in tolls (verified, one way)"], note:"709km · 8 hr 50 min · ₹4,505 in petrol" },
+  { leg:"Delhi → Udaipur", via:"NH-52, via Jaipur",
+    tolls:["₹1,445 in tolls (verified)"], note:"709km · 8 hr 50 min · ₹4,505 in petrol" },
+  { leg:"Udaipur → Delhi", via:"NH-52, via Jaipur — same road back",
+    tolls:["₹1,445 in tolls (verified)"], note:"709km · 8 hr 50 min · ₹4,505 in petrol" },
 ];
 
 // The one genuinely fixed cost. Everything else gets decided on the road and
@@ -502,30 +490,19 @@ const CAR_RATE = 3300;
 const CAR_DAYS = 3;
 
 // Planning projection only — never touches anyone's balance.
-// This route is not a scaled-up version of the old one. Delhi -> Udaipur via
-// the three forts is ~795km one way (OSRM); the direct return is ~675km —
-// round trip ~1,470km, against ~560km for the old Mussoorie loop. Almost all
-// of it is highway/plains, not the hill climb the old petrol-buffer line was
-// costing. cngKm below is that full round trip on the assumption the car can
-// run CNG the whole way — that needs your own check, not mine: CNG station
-// coverage through rural Alwar/Rajgarh and around the forts is not something
-// I can verify. petKm is a placeholder for local running around Udaipur and
-// the forts (Monsoon Palace's climb, driving between ghats and museums) —
-// tune it once you know the actual plan.
+// Direct both ways now that the forts are cut, so both legs use the same real
+// number from your toll+fuel calculator: 709km each way, 1,418km round trip.
+// cngKm assumes the car runs CNG the whole way — that is still your own
+// call, not mine: CNG station coverage on this route was never checked.
 // Mileage is deliberately worst-case — a retrofitted CNG kit on a loaded
 // Creta, and petrol on steep sections with five up, luggage and the AC running.
 const PLAN = {
   // 795km outbound via the forts (OSRM) + 709km direct return (a real toll
   // calculator, not OSRM) = 1,504km round trip.
-  cngKm:1504, cngEff:12, cngRate:85,   // round trip, on the CNG-the-whole-way assumption above
+  cngKm:1418, cngEff:12, cngRate:85,   // 709km × 2, real, both ways
   petKm:0,    petEff:9,  petRate:105,
-  buffer:130,                          // local driving around Udaipur/forts - your own number, not a guess
-  // Rs1,445 is real, but only for ONE direction (the direct 709km return).
-  // The outbound leg via the forts is 795km on a different route entirely and
-  // has no real number yet - it is very likely more, not less, than the
-  // return leg. Doubling the one real figure as a floor until that number
-  // comes in; treat this as an underestimate, not a total.
-  toll:2890,
+  buffer:130,                          // local driving around Udaipur - your own number
+  toll:2890,                           // Rs1,445 × 2, real, both ways
 };
 
 const rupee = n => "₹" + Math.round(n).toLocaleString("en-IN");
@@ -579,7 +556,7 @@ const draftTotal = () => FRIENDS.reduce((s,f)=>s+Math.round(num(state.draft[f]))
 // token for everyone else. The server decides which it is; the app never does.
 const KK = "tripsplit5:key", CK = "tripsplit5:cache", JK = "tripsplit5:join",
       MK = "tripsplit5:migrated", IK = "tripsplit5:installed",
-      SHK = "tripsplit5:noshare", RK = "tripsplit5:roadline-udaipur", TK = "tripsplit5:tab",
+      SHK = "tripsplit5:noshare", RK = "tripsplit5:roadline-udaipur-direct", TK = "tripsplit5:tab",
       MSK = "tripsplit5:mapstyle";
 let KEY = null;
 
