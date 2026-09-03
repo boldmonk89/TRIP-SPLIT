@@ -425,9 +425,9 @@
 <script>
 const FRIENDS = ["Archit","Satwik","Kripansh","Tejas","Akshat"];
 const OWNER = "Tejas";   // the one holding the owner link; everyone else reads only
-const TRIP = "Delhi · Jibhi · Tirthan Valley · Jalori Pass · 7–10 Sep";
+const TRIP = "Delhi · Kartarpur · Jibhi · Tirthan Valley · Jalori Pass · 7–10 Sep";
 // The header has one line to play with, and every stop is on the Route tab.
-const TRIP_SHORT = "Delhi · Jibhi · 7–10 Sep";  // header keeps the short form; every stop is on the Route tab
+const TRIP_SHORT = "Delhi · Kartarpur · Jibhi · 7–10 Sep";  // header keeps the short form; every stop is on the Route tab
 
 // ---- the shared ledger ----
 // The key below is meant to be public — on its own it can reach nothing. Every
@@ -455,33 +455,52 @@ const CATS = { car:"Car", fuel:"Fuel", toll:"Toll", stay:"Stay", food:"Food", ac
 // Ordered the way you would actually work through them from Jibhi: the village
 // first, then north, east, south over Jalori, and the two far ones last.
 const STOPS = [
-  { name:"Samaypur Badli",   note:"Start",                          lat:28.7387, lng:77.1385, kind:"stop" },
-  { name:"Jibhi",            note:"Base for the whole trip · 454km, 9 hr 25 min from home", lat:31.5923, lng:77.3526, kind:"stop" },
+  { name:"Samaypur Badli",   note:"Start · 7 Sep, 2 pm",            lat:28.7387, lng:77.1385, kind:"stop" },
+  { name:"Kartarpur",        note:"Gurdwara · night halt, in around 11 pm", dist:"377 km from home", lat:31.4397, lng:75.4989, kind:"stop" },
+  { name:"Jibhi",            note:"Base for the whole trip · next morning's drive", dist:"283 km on from Kartarpur", lat:31.5923, lng:77.3526, kind:"stop" },
 
-  { name:"The Hosteller Jibhi", note:"The stay · exact pin not on OpenStreetMap, this points at Jibhi", lat:31.5923, lng:77.3526, kind:"see" },
-  { name:"Jibhi Waterfall",  note:"Walkable from the village",      lat:31.5860, lng:77.3518, kind:"see" },
-  { name:"Kulhi Katandi",    note:"Quiet waterhole · exact pin not on OpenStreetMap, ask locally", lat:31.5923, lng:77.3526, kind:"see" },
-  { name:"Chhoi Waterfall",  note:"Short trek · exact pin not on OpenStreetMap, ask locally", lat:31.5923, lng:77.3526, kind:"see" },
-  { name:"Chehni Kothi",     note:"Old wooden tower fort, uphill walk", lat:31.6277, lng:77.3584, kind:"see" },
-  { name:"Great Himalayan National Park", note:"Sairopa gate — the entry you can actually drive to", lat:31.6413, lng:77.3877, kind:"see" },
-  { name:"Tirthan Valley Road", note:"Sharchi side · 20.3km, 1 hr 23 min from Jibhi", lat:31.6205, lng:77.4226, kind:"see" },
-  { name:"Jalori Pass",      note:"3,120m pass on NH-305",           lat:31.5372, lng:77.3718, kind:"see" },
-  { name:"Serolsar Lake",    note:"~5km walk east from the pass",    lat:31.5375, lng:77.4167, kind:"see" },
-  { name:"Raghupur Fort",    note:"~3km walk west from the pass",    lat:31.5361, lng:77.3513, kind:"see" },
-  { name:"Shangarh Meadow",  note:"Sainj valley · ~40km north of Jibhi", lat:31.7573, lng:77.3771, kind:"see" },
-  { name:"Ghatasani–Barot Road", note:"Barot valley · ~130km, a full day out on its own", lat:32.0377, lng:76.8452, kind:"see" },
+  { name:"The Hosteller Jibhi", note:"The stay · exact pin not on OpenStreetMap, this points at Jibhi", dist:"in Jibhi", lat:31.5923, lng:77.3526, kind:"see" },
+  { name:"Jibhi Waterfall",  note:"Walkable from the village",      dist:"1.6 km from Jibhi", lat:31.5860, lng:77.3518, kind:"see" },
+  { name:"Kulhi Katandi",    note:"Quiet waterhole · exact pin not on OpenStreetMap, ask locally", dist:"in Jibhi", lat:31.5923, lng:77.3526, kind:"see" },
+  { name:"Chhoi Waterfall",  note:"Short trek · exact pin not on OpenStreetMap, ask locally", dist:"in Jibhi", lat:31.5923, lng:77.3526, kind:"see" },
+  { name:"Chehni Kothi",     note:"Old wooden tower fort, uphill walk", dist:"6.3 km from Jibhi", lat:31.6277, lng:77.3584, kind:"see" },
+  { name:"Great Himalayan National Park", note:"Sairopa gate — the entry you can actually drive to", dist:"12.8 km from Jibhi", lat:31.6413, lng:77.3877, kind:"see" },
+  { name:"Tirthan Valley Road", note:"Sharchi side",           dist:"20.3 km from Jibhi · 1 hr 23 min", lat:31.6205, lng:77.4226, kind:"see" },
+  { name:"Jalori Pass",      note:"3,120m pass on NH-305",           dist:"13.4 km from Jibhi", lat:31.5372, lng:77.3718, kind:"see" },
+  { name:"Serolsar Lake",    note:"Walk in from Jalori Pass",        dist:"13.4 km to the pass, then ~5 km on foot", lat:31.5375, lng:77.4167, kind:"see" },
+  { name:"Raghupur Fort",    note:"Walk in from Jalori Pass",        dist:"13.4 km to the pass, then ~3 km on foot", lat:31.5361, lng:77.3513, kind:"see" },
+  { name:"Shangarh Meadow",  note:"Sainj valley",                    dist:"54.6 km from Jibhi", lat:31.7573, lng:77.3771, kind:"see" },
+  { name:"Ghatasani–Barot Road", note:"Barot valley — a full day out on its own", dist:"136 km from Jibhi · ~3.5 hrs each way", lat:32.0377, lng:76.8452, kind:"see" },
 
   { name:"Samaypur Badli",   note:"Back home",                       lat:28.7387, lng:77.1385, kind:"stop" },
 ];
 
-// Both figures below are yours, off Google, not my estimates.
+// Every one of these is a barrier=toll_booth node in OpenStreetMap sitting
+// within 350m of the real Delhi -> Kartarpur -> Jibhi line, ordered by how far
+// in it is. Names are whatever OSM carries - blanks stay blank, not guessed.
+const TOLLS = [
+  { km: 15, lat:28.8560, lng:77.1256, name:"" },
+  { km: 37, lat:29.0531, lng:77.0655, name:"Bhagan Toll Plaza" },
+  { km: 81, lat:29.4333, lng:76.9704, name:"Panipat Bypass Toll" },
+  { km: 97, lat:29.5811, lng:76.9784, name:"Gharaunda (Karnal)" },
+  { km:198, lat:30.4039, lng:76.7369, name:"Sambhu (Ghaggar)" },
+  { km:313, lat:30.9890, lng:75.7906, name:"Toll Plaza" },
+  { km:426, lat:31.2043, lng:75.8769, name:"" },
+  { km:506, lat:31.2042, lng:76.5526, name:"Kiratpur Toll Plaza" },
+  { km:518, lat:31.2117, lng:76.6405, name:"" },
+];
+
+// Delhi -> Jibhi direct is your own Google figure. The two legs via Kartarpur
+// are OSRM, the engine the map itself uses.
 const ROADS = [
-  { leg:"Delhi → Jibhi", via:"NH-44, via Chandigarh, Bilaspur, Mandi and Aut",
-    tolls:["Tolls apply · budgeted at ₹2,000 for the round trip"], note:"454km · 9 hr 25 min" },
+  { leg:"Delhi → Kartarpur", via:"NH-44, via Panipat, Karnal and Ludhiana",
+    tolls:["6 plazas on this stretch · marked on the map"], note:"377km · 4 hr 40 min driving — you have 2pm to 11pm for it" },
+  { leg:"Kartarpur → Jibhi", via:"Back east through Kiratpur, then Bilaspur, Mandi and Aut",
+    tolls:["3 plazas · marked on the map"], note:"283km · 4 hr 6 min — the morning drive" },
   { leg:"Jibhi → Tirthan Valley Road", via:"NH-305 and Sharchi Road",
     tolls:[], note:"20.3km · 1 hr 23 min — short on the map, slow on the road" },
-  { leg:"Jibhi → Delhi", via:"NH-44, same road back",
-    tolls:["Tolls apply · included in the ₹2,000 above"], note:"454km · 9 hr 25 min" },
+  { leg:"Jibhi → Delhi", via:"NH-44 direct — not back through Kartarpur",
+    tolls:["Tolls apply · budgeted inside the ₹2,000"], note:"454km · 9 hr 25 min" },
 ];
 
 // The one genuinely fixed cost. Everything else gets decided on the road and
@@ -493,10 +512,10 @@ const CAR_DAYS = 3;
 // here at all: that stays per head, paid individually.
 // These are YOUR budget figures, not measurements — car ₹9,900, toll ₹2,000,
 // petrol ₹7,000, CNG ₹2,000 — with the km back-solved so the card adds up to
-// them. Worth knowing what they imply: 282km of CNG plus 600km of petrol is
-// 882km, and Delhi–Jibhi and back alone is 908km. So the budget covers the
-// drive up and down with nothing left for local running — Jalori, Shangarh,
-// and especially Barot come on top.
+// them. The gap is worth knowing: the budget covers 882km, and the trip is now
+// 1,114km (377 to Kartarpur + 283 on to Jibhi + 454 straight home). That is
+// 232km unfunded before a single local run to Jalori, Shangarh or Barot —
+// roughly ₹2,700 more at petrol rates.
 const PLAN = {
   cngKm:282,  cngEff:12, cngRate:85,   // plains, as far as CNG lasts - Rs1,998
   petKm:470,  petEff:9,  petRate:105,  // the hill half of the drive
@@ -555,7 +574,7 @@ const draftTotal = () => FRIENDS.reduce((s,f)=>s+Math.round(num(state.draft[f]))
 // token for everyone else. The server decides which it is; the app never does.
 const KK = "tripsplit5:key", CK = "tripsplit5:cache", JK = "tripsplit5:join",
       MK = "tripsplit5:migrated", IK = "tripsplit5:installed",
-      SHK = "tripsplit5:noshare", RK = "tripsplit5:roadline-himachal", TK = "tripsplit5:tab",
+      SHK = "tripsplit5:noshare", RK = "tripsplit5:roadline-himachal-kartarpur", TK = "tripsplit5:tab",
       MSK = "tripsplit5:mapstyle";
 let KEY = null;
 
@@ -1706,6 +1725,7 @@ async function loadRoadLine(){
 // render() replaces the whole tab, which throws the map away with it. Keep the
 // last centre and zoom so a background refresh does not yank the view back.
 // Leaflet takes colours as strings, so mirror the two tokens it needs.
+const TOLLC = "#b45309";   // toll pins - readable on both the light and dark map
 const BRAND = "#e61e4d", LIVE = "#047857";
 
 // All three are free and need no key. Attribution is a licence condition, so
@@ -2122,7 +2142,15 @@ function mountMap(){
     L.circleMarker([st.lat, st.lng], {
       radius: st.kind==="stop" ? 7 : 5, color:"#fff", weight:2,
       fillColor: st.kind==="stop" ? BRAND : "#64748b", fillOpacity:1,
-    }).addTo(lmap).bindPopup("<b>"+esc(st.name)+"</b><br>"+esc(st.note));
+    }).addTo(lmap).bindPopup("<b>"+esc(st.name)+"</b><br>"+esc(st.note)
+      + (st.dist ? "<br>"+esc(st.dist) : ""));
+  }
+
+  for(const t of TOLLS){
+    L.circleMarker([t.lat, t.lng], {
+      radius:4, color:"#fff", weight:1.5, fillColor:TOLLC, fillOpacity:1,
+    }).addTo(lmap).bindPopup("<b>"+esc(t.name || "Toll plaza")+"</b><br>"
+      + t.km + " km from home");
   }
 
   // People sit on their own layer: a refresh swaps the dots without touching
@@ -2173,6 +2201,7 @@ function viewRoute(){
       <span><i style="background:${BRAND}"></i>Stops</span>
       <span><i style="background:#64748b"></i>Places to see</span>
       <span><i style="background:${LIVE}"></i>People, live</span>
+      <span><i style="background:${TOLLC}"></i>Toll plazas</span>
       ${nav?`<span><i style="background:#1a73e8"></i>Your route</span>
              <span><i style="background:#94a3b8"></i>Other way — tap it to switch</span>`:""}
     </div>
@@ -2205,6 +2234,7 @@ function viewRoute(){
           <div class="body">
             <div class="t">${esc(st.name)}</div>
             <div class="s">${esc(st.note)}</div>
+            ${st.dist?`<div class="s" style="color:var(--ink);font-weight:600">${esc(st.dist)}</div>`:""}
           </div>
           ${st.kind==="stop"
             ? `<div class="acts">
