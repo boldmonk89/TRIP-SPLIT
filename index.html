@@ -425,9 +425,9 @@
 <script>
 const FRIENDS = ["Archit","Satwik","Kripansh","Tejas","Akshat"];
 const OWNER = "Tejas";   // the one holding the owner link; everyone else reads only
-const TRIP = "Delhi · Kartarpur · Jibhi · Tirthan Valley · Jalori Pass · 7–10 Sep";
+const TRIP = "Delhi · Anandpur Sahib · Jibhi · Tirthan Valley · Jalori Pass · 7–10 Sep";
 // The header has one line to play with, and every stop is on the Route tab.
-const TRIP_SHORT = "Delhi · Kartarpur · Jibhi · 7–10 Sep";  // header keeps the short form; every stop is on the Route tab
+const TRIP_SHORT = "Delhi · Jibhi · 7–10 Sep";  // header keeps the short form; every stop is on the Route tab
 
 // ---- the shared ledger ----
 // The key below is meant to be public — on its own it can reach nothing. Every
@@ -456,8 +456,8 @@ const CATS = { car:"Car", fuel:"Fuel", toll:"Toll", stay:"Stay", food:"Food", ac
 // first, then north, east, south over Jalori, and the two far ones last.
 const STOPS = [
   { name:"Samaypur Badli",   note:"Start · 7 Sep, 2 pm",            lat:28.7387, lng:77.1385, kind:"stop" },
-  { name:"Kartarpur",        note:"Gurdwara · night halt, in around 11 pm", dist:"377 km from home", lat:31.4397, lng:75.4989, kind:"stop" },
-  { name:"Jibhi",            note:"Base for the whole trip · next morning's drive", dist:"283 km on from Kartarpur", lat:31.5923, lng:77.3526, kind:"stop" },
+  { name:"Anandpur Sahib",   note:"Gurdwara sarai · night halt, where the plains end", dist:"317 km from home · in by about 8:30 pm", lat:31.2351, lng:76.4990, kind:"stop" },
+  { name:"Jibhi",            note:"Base for the whole trip · the morning's hill drive", dist:"161 km on from Anandpur · hostel by 12–1 pm", lat:31.5923, lng:77.3526, kind:"stop" },
 
   { name:"The Hosteller Jibhi", note:"The stay · exact pin not on OpenStreetMap, this points at Jibhi", dist:"in Jibhi", lat:31.5923, lng:77.3526, kind:"see" },
   { name:"Jibhi Waterfall",  note:"Walkable from the village",      dist:"1.6 km from Jibhi", lat:31.5860, lng:77.3518, kind:"see" },
@@ -476,30 +476,33 @@ const STOPS = [
 ];
 
 // Every one of these is a barrier=toll_booth node in OpenStreetMap sitting
-// within 350m of the real Delhi -> Kartarpur -> Jibhi line, ordered by how far
-// in it is. Names are whatever OSM carries - blanks stay blank, not guessed.
+// within 350m of the real Delhi -> Anandpur Sahib -> Jibhi line, ordered by
+// how far in it is. Names are whatever OSM carries - blanks stay blank.
+// Kiratpur gets passed twice, going into Anandpur and coming back out, so
+// budget for paying it both times.
 const TOLLS = [
   { km: 15, lat:28.8560, lng:77.1256, name:"" },
   { km: 37, lat:29.0531, lng:77.0655, name:"Bhagan Toll Plaza" },
   { km: 81, lat:29.4333, lng:76.9704, name:"Panipat Bypass Toll" },
   { km: 97, lat:29.5811, lng:76.9784, name:"Gharaunda (Karnal)" },
-  { km:198, lat:30.4039, lng:76.7369, name:"Sambhu (Ghaggar)" },
-  { km:313, lat:30.9890, lng:75.7906, name:"Toll Plaza" },
-  { km:426, lat:31.2043, lng:75.8769, name:"" },
-  { km:506, lat:31.2042, lng:76.5526, name:"Kiratpur Toll Plaza" },
-  { km:518, lat:31.2117, lng:76.6405, name:"" },
+  { km:209, lat:30.5275, lng:76.8131, name:"" },
+  { km:245, lat:30.7334, lng:76.6960, name:"Sale Tax Barrier" },
+  { km:272, lat:30.9081, lng:76.5454, name:"Rohan Rajdeep" },
+  { km:311, lat:31.2041, lng:76.5525, name:"Kiratpur Toll Plaza · passed twice" },
+  { km:336, lat:31.2117, lng:76.6405, name:"" },
 ];
 
-// Delhi -> Jibhi direct is your own Google figure. The two legs via Kartarpur
-// are OSRM, the engine the map itself uses.
+// Delhi -> Jibhi direct is your own Google figure. The split legs are OSRM,
+// the engine the map itself uses - and OSRM is optimistic in the hills, so
+// treat the second leg as nearer 3.5-4 hrs than the 2 hr 23 min it claims.
 const ROADS = [
-  { leg:"Delhi → Kartarpur", via:"NH-44, via Panipat, Karnal and Ludhiana",
-    tolls:["6 plazas on this stretch · marked on the map"], note:"377km · 4 hr 40 min driving — you have 2pm to 11pm for it" },
-  { leg:"Kartarpur → Jibhi", via:"Back east through Kiratpur, then Bilaspur, Mandi and Aut",
-    tolls:["3 plazas · marked on the map"], note:"283km · 4 hr 6 min — the morning drive" },
+  { leg:"Delhi → Anandpur Sahib", via:"NH-44 to Ambala, then NH-205 past Kiratpur",
+    tolls:["8 plazas · marked on the map"], note:"317km · all flat highway — leave 2pm, in well before 11pm" },
+  { leg:"Anandpur Sahib → Jibhi", via:"Back through Kiratpur, then Bilaspur, Mandi and Aut",
+    tolls:["Kiratpur again · the same plaza as last night"], note:"161km of hill road — the whole point of doing it in daylight" },
   { leg:"Jibhi → Tirthan Valley Road", via:"NH-305 and Sharchi Road",
     tolls:[], note:"20.3km · 1 hr 23 min — short on the map, slow on the road" },
-  { leg:"Jibhi → Delhi", via:"NH-44 direct — not back through Kartarpur",
+  { leg:"Jibhi → Delhi", via:"NH-44 direct — straight through, no halt",
     tolls:["Tolls apply · budgeted inside the ₹2,000"], note:"454km · 9 hr 25 min" },
 ];
 
@@ -512,10 +515,9 @@ const CAR_DAYS = 3;
 // here at all: that stays per head, paid individually.
 // These are YOUR budget figures, not measurements — car ₹9,900, toll ₹2,000,
 // petrol ₹7,000, CNG ₹2,000 — with the km back-solved so the card adds up to
-// them. The gap is worth knowing: the budget covers 882km, and the trip is now
-// 1,114km (377 to Kartarpur + 283 on to Jibhi + 454 straight home). That is
-// 232km unfunded before a single local run to Jalori, Shangarh or Barot —
-// roughly ₹2,700 more at petrol rates.
+// them. The budget covers 882km; the trip is 936km (317 to Anandpur Sahib +
+// 161 on to Jibhi + 458 straight home). About 54km short, roughly ₹600 —
+// close enough, but local running to Jalori, Shangarh or Barot is on top.
 const PLAN = {
   cngKm:282,  cngEff:12, cngRate:85,   // plains, as far as CNG lasts - Rs1,998
   petKm:470,  petEff:9,  petRate:105,  // the hill half of the drive
@@ -574,7 +576,7 @@ const draftTotal = () => FRIENDS.reduce((s,f)=>s+Math.round(num(state.draft[f]))
 // token for everyone else. The server decides which it is; the app never does.
 const KK = "tripsplit5:key", CK = "tripsplit5:cache", JK = "tripsplit5:join",
       MK = "tripsplit5:migrated", IK = "tripsplit5:installed",
-      SHK = "tripsplit5:noshare", RK = "tripsplit5:roadline-himachal-kartarpur", TK = "tripsplit5:tab",
+      SHK = "tripsplit5:noshare", RK = "tripsplit5:roadline-himachal-anandpur", TK = "tripsplit5:tab",
       MSK = "tripsplit5:mapstyle";
 let KEY = null;
 
