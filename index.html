@@ -302,6 +302,10 @@
   .leg.see .legrow{padding-left:16px}
   .leg.see .t{font-size:14px;font-weight:500}
   .leg.see .s{font-size:12.5px}
+  .pshot{width:100%;max-width:340px;aspect-ratio:3/2;object-fit:cover;border-radius:12px;
+    display:block;margin:9px 0 2px;background:var(--edge)}
+  .skip{display:inline-block;margin-top:6px;padding:2px 8px;border-radius:99px;font-size:11px;
+    font-weight:600;background:var(--edge);color:var(--dim)}
   .legrow{display:flex;align-items:flex-start;gap:10px;padding:6px 0 18px}
   .legrow .body{flex:1;min-width:0}
   .legrow .t{font-size:15px;font-weight:600}
@@ -457,19 +461,19 @@ const CATS = { car:"Car", fuel:"Fuel", toll:"Toll", stay:"Stay", food:"Food", ac
 const STOPS = [
   { name:"Samaypur Badli",   note:"Start · 7 Sep, 2 pm",            lat:28.7387, lng:77.1385, kind:"stop" },
   { name:"Anandpur Sahib",   note:"Gurdwara sarai · night halt, where the plains end", dist:"317 km from home · in by about 8:30 pm", lat:31.2351, lng:76.4990, kind:"stop" },
-  { name:"Jibhi",            note:"Base for the whole trip · the morning's hill drive", dist:"161 km on from Anandpur · hostel by 12–1 pm", lat:31.5923, lng:77.3526, kind:"stop" },
+  { name:"Jibhi",            note:"Base for the whole trip · the morning's hill drive", dist:"161 km on from Anandpur · hostel by 12–1 pm", img:"p-jibhi.jpg", lat:31.5923, lng:77.3526, kind:"stop" },
 
   { name:"The Hosteller Jibhi", note:"The stay · exact pin not on OpenStreetMap, this points at Jibhi", dist:"in Jibhi", lat:31.5923, lng:77.3526, kind:"see" },
-  { name:"Jibhi Waterfall",  note:"Walkable from the village",      dist:"1.6 km from Jibhi", lat:31.5860, lng:77.3518, kind:"see" },
-  { name:"Kulhi Katandi",    note:"Quiet waterhole · exact pin not on OpenStreetMap, ask locally", dist:"in Jibhi", lat:31.5923, lng:77.3526, kind:"see" },
-  { name:"Chhoi Waterfall",  note:"Short trek · exact pin not on OpenStreetMap, ask locally", dist:"in Jibhi", lat:31.5923, lng:77.3526, kind:"see" },
-  { name:"Chehni Kothi",     note:"Old wooden tower fort, uphill walk", dist:"6.3 km from Jibhi", lat:31.6277, lng:77.3584, kind:"see" },
+  { name:"Jibhi Waterfall",  note:"Walkable from the village",      dist:"1.6 km from Jibhi", img:"p-jibhi-waterfall.jpg", lat:31.5860, lng:77.3518, kind:"see" },
+  { name:"Kulhi Katandi",    note:"Quiet waterhole · exact pin not on OpenStreetMap, ask locally", dist:"in Jibhi", img:"p-kulhi-katandi.jpg", lat:31.5923, lng:77.3526, kind:"see" },
+  { name:"Chhoi Waterfall",  note:"Short trek · exact pin not on OpenStreetMap, ask locally", dist:"in Jibhi", img:"p-chhoi.jpg", lat:31.5923, lng:77.3526, kind:"see" },
+  { name:"Chehni Kothi",     note:"Old wooden tower fort, uphill walk · skip this one if the day is running short", dist:"6.3 km from Jibhi", img:"p-chehni-kothi.jpg", skip:true, lat:31.6277, lng:77.3584, kind:"see" },
   { name:"Great Himalayan National Park", note:"Sairopa gate — the entry you can actually drive to", dist:"12.8 km from Jibhi", lat:31.6413, lng:77.3877, kind:"see" },
   { name:"Tirthan Valley Road", note:"Sharchi side",           dist:"20.3 km from Jibhi · 1 hr 23 min", lat:31.6205, lng:77.4226, kind:"see" },
   { name:"Jalori Pass",      note:"3,120m pass on NH-305",           dist:"13.4 km from Jibhi", lat:31.5372, lng:77.3718, kind:"see" },
-  { name:"Serolsar Lake",    note:"Walk in from Jalori Pass",        dist:"13.4 km to the pass, then ~5 km on foot", lat:31.5375, lng:77.4167, kind:"see" },
-  { name:"Raghupur Fort",    note:"Walk in from Jalori Pass",        dist:"13.4 km to the pass, then ~3 km on foot", lat:31.5361, lng:77.3513, kind:"see" },
-  { name:"Shangarh Meadow",  note:"Sainj valley",                    dist:"54.6 km from Jibhi", lat:31.7573, lng:77.3771, kind:"see" },
+  { name:"Serolsar Lake",    note:"Walk in from Jalori Pass",        dist:"13.4 km to the pass, then ~5 km on foot", img:"p-serolsar.jpg", lat:31.5375, lng:77.4167, kind:"see" },
+  { name:"Raghupur Fort",    note:"Walk in from Jalori Pass",        dist:"13.4 km to the pass, then ~3 km on foot", img:"p-raghupur.jpg", lat:31.5361, lng:77.3513, kind:"see" },
+  { name:"Shangarh Meadow",  note:"Sainj valley",                    dist:"54.6 km from Jibhi", img:"p-shangarh.jpg", lat:31.7573, lng:77.3771, kind:"see" },
   { name:"Ghatasani–Barot Road", note:"Barot valley — a full day out on its own", dist:"136 km from Jibhi · ~3.5 hrs each way", lat:32.0377, lng:76.8452, kind:"see" },
 
   { name:"Samaypur Badli",   note:"Back home",                       lat:28.7387, lng:77.1385, kind:"stop" },
@@ -513,15 +517,18 @@ const CAR_DAYS = 3;
 
 // Planning projection only — never touches anyone's balance. Food is not in
 // here at all: that stays per head, paid individually.
-// These are YOUR budget figures, not measurements — car ₹9,900, toll ₹2,000,
-// petrol ₹7,000, CNG ₹2,000 — with the km back-solved so the card adds up to
-// them. The budget covers 882km; the trip is 936km (317 to Anandpur Sahib +
-// 161 on to Jibhi + 458 straight home). About 54km short, roughly ₹600 —
-// close enough, but local running to Jalori, Shangarh or Barot is on top.
+// Redone once the local running turned out to be 400-500km, not a token
+// buffer. The split follows where CNG actually exists: plains on CNG (317km
+// out to Anandpur Sahib, ~308km of the way home), and everything from the
+// hills up on petrol — 311km of hill highway plus 450km of local running,
+// the middle of your 400-500.
+// This is no longer your earlier budget. Fuel comes to about ₹13,300
+// against the ₹9,000 you had penciled in (₹2,000 CNG + ₹7,000 petrol);
+// the extra 450km in the hills is where it went.
 const PLAN = {
-  cngKm:282,  cngEff:12, cngRate:85,   // plains, as far as CNG lasts - Rs1,998
-  petKm:470,  petEff:9,  petRate:105,  // the hill half of the drive
-  buffer:130,                          // local running from Jibhi - together Rs7,000
+  cngKm:625,  cngEff:12, cngRate:85,   // plains both ways - Rs4,427
+  petKm:311,  petEff:9,  petRate:105,  // hill highway: 161 up, ~150 back down
+  buffer:450,                          // your 400-500 of local running, middled
   toll:2000,
 };
 
@@ -2237,6 +2244,8 @@ function viewRoute(){
             <div class="t">${esc(st.name)}</div>
             <div class="s">${esc(st.note)}</div>
             ${st.dist?`<div class="s" style="color:var(--ink);font-weight:600">${esc(st.dist)}</div>`:""}
+            ${st.skip?`<div class="skip">Could be skipped</div>`:""}
+            ${st.img?`<img class="pshot" src="${st.img}" alt="" loading="lazy">`:""}
           </div>
           ${st.kind==="stop"
             ? `<div class="acts">
