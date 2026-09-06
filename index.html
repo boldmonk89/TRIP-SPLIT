@@ -424,6 +424,10 @@
     <svg viewBox="0 0 24 24"><path d="M5 17H3v-6l2-5h11l2 5v6h-2"/><circle cx="7.5" cy="17" r="2"/><circle cx="16.5" cy="17" r="2"/></svg>
     Trip
   </button>
+  <button data-tab="mine">
+    <svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+    Mine
+  </button>
 </nav>
 
 <script>
@@ -452,6 +456,47 @@ async function rpc(fn, args){
 }
 
 const CATS = { car:"Car", fuel:"Fuel", toll:"Toll", stay:"Stay", food:"Food", activity:"Activity", misc:"Misc" };
+
+// ---- the private diary ----
+// Server side these rows are filed under a hash of your token, never your
+// name, so nobody else's token can reach them - the owner link included.
+// Nothing here touches the shared ledger or anyone's balance.
+async function mineLoad(){
+  if(!KEY) return;
+  try{ state.mine = await rpc("private_list", {p_token:KEY}) || []; }
+  catch(e){ /* offline - keep whatever is already on screen */ }
+}
+async function mineApply(op, data){
+  state.mine = await rpc("private_apply", {p_token:KEY, p_op:op, p_data:data||{}}) || [];
+}
+const mineTotal = () => state.mine.reduce((a,r)=>a+num(r.amt), 0);
+
+async function mineSave(){
+  const amt = Math.round(parseFloat(state.mineAmt));
+  if(!state.mineDesc.trim()){ await ui.alert("Needs a name", "Put in what you spent on."); return; }
+  if(!amt || amt<=0){ await ui.alert("Needs an amount", "Put in how much it came to."); return; }
+  const row = { desc:state.mineDesc.trim(), amt, where:state.mineWhere.trim() };
+  try{
+    if(state.mineEditing) await mineApply("edit", {...row, id:state.mineEditing});
+    else                  await mineApply("add", row);
+    state.mineDesc=""; state.mineAmt=""; state.mineWhere=""; state.mineEditing=null;
+    render();
+  }catch(e){ await ui.alert("Could not save", "No signal right now. Try again in a moment."); }
+}
+function mineEdit(id){
+  const r = state.mine.find(x=>x.id===id); if(!r) return;
+  state.mineEditing=id; state.mineDesc=r.desc||""; state.mineAmt=String(num(r.amt)||"");
+  state.mineWhere=r.where||"";
+  render(); scrollTo({top:0, behavior:"smooth"});
+}
+function mineCancel(){
+  state.mineEditing=null; state.mineDesc=""; state.mineAmt=""; state.mineWhere=""; render();
+}
+async function mineDelete(id){
+  if(!await ui.confirm("Remove this?", "It goes for good.")) return;
+  try{ await mineApply("delete", {id}); render(); }
+  catch(e){ await ui.alert("Could not remove", "No signal right now."); }
+}
 
 // The loop, in the order we actually drive it. Coordinates are what the map
 // links are built from, so they have to be the real place, not the town centre
@@ -550,6 +595,8 @@ let state = {
   tab:"log", cat:"food", payer:FRIENDS[0], openPerson:null, showPlan:false,
   mode:"equal", draft:{},   // draft holds the per-person amounts being typed
   editing:null,             // id of the expense being changed, if any
+  mine:[],                  // the private diary - only ever what this token owns
+  mineDesc:"", mineAmt:"", mineWhere:"", mineEditing:null,
   who:[...FRIENDS],         // who this particular bill is split between
   payers:[FRIENDS[0]],      // who put money in; more than one is allowed
   paid:{},                  // how much each of them put in, when it is several
@@ -843,6 +890,7 @@ function calc(){
 function setTab(t){
   state.tab=t; state.openPerson=null;
   ls(TK, t);                       // so a reload comes back where you were
+  if(t==="mine") mineLoad().then(render);
   if(t==="route"){ startRoutePoll(); refreshQuiet().then(paintLive); }
   else {
     stopRoutePoll();
@@ -1314,6 +1362,67 @@ function planNoteHTML(){
     = <b>${rupee(planTotal())}</b> over ${num(p.cngKm)+petKmTotal()}km, about <b>${rupee(Math.round(planTotal()/N))}</b> each.`;
 }
 function updatePlanNote(){ const el=document.getElementById("planNote"); if(el) el.innerHTML=planNoteHTML(); }
+
+function viewDiary(){
+  const byDay=[];
+  state.mine.forEach(r=>{
+    const k=dayKey(r.ts);
+    if(!byDay.length||byDay[byDay.length-1].k!==k) byDay.push({k,items:[]});
+    byDay[byDay.length-1].items.push(r);
+  });
+  return `
+  <section>
+    <div class="shead">
+      <div class="kicker">${state.mineEditing ? "Change this" : "What you spent"}</div>
+      ${state.mineEditing ? `<button class="link" onclick="mineCancel()">Cancel</button>` : ""}
+    </div>
+    <div class="hint" style="margin:0 0 16px">Just for you. Nobody else in the group can open this — not even from the owner link. It stays out of the split completely.</div>
+
+    <label class="lbl" for="m-desc">What you spent on</label>
+    <input class="f" id="m-desc" value="${esc(state.mineDesc)}" oninput="state.mineDesc=this.value"
+           placeholder="Chai, shopping, anything">
+
+    <div style="margin-top:16px">
+      <label class="lbl" for="m-where">Where</label>
+      <input class="f" id="m-where" value="${esc(state.mineWhere)}" oninput="state.mineWhere=this.value"
+             placeholder="Jibhi market, Jalori Pass…">
+    </div>
+
+    <div style="margin-top:16px">
+      <label class="lbl" for="m-amt">How much</label>
+      <input class="f" id="m-amt" type="number" inputmode="numeric" value="${esc(state.mineAmt)}"
+             oninput="state.mineAmt=this.value" placeholder="0">
+    </div>
+
+    <button class="btn" style="margin-top:18px" onclick="mineSave()">
+      ${state.mineEditing ? "Save the change" : "Add it"}</button>
+  </section>
+
+  <section>
+    <div class="shead">
+      <div class="kicker">Your total</div>
+      <b style="font-size:19px">${rupee(mineTotal())}</b>
+    </div>
+    ${!state.mine.length
+      ? `<div class="hint" style="margin:6px 0 0">Nothing here yet. Whatever you add stays private to this phone’s link.</div>`
+      : byDay.map(d=>`
+        <div class="daylab">${esc(d.k)}</div>
+        ${d.items.map(r=>`
+          <div class="row">
+            <div class="body">
+              <div class="t">${esc(r.desc||"Spent")}</div>
+              ${r.where?`<div class="s">${esc(r.where)}</div>`:""}
+            </div>
+            <div style="text-align:right">
+              <b>${rupee(num(r.amt))}</b>
+              <div style="margin-top:4px">
+                <button class="x" onclick="mineEdit(${jq(r.id)})">edit</button>
+                <button class="x" onclick="mineDelete(${jq(r.id)})">remove</button>
+              </div>
+            </div>
+          </div>`).join("")}`).join("")}
+  </section>`;
+}
 
 function viewLog(t){
   const byDay=[];
@@ -2350,6 +2459,7 @@ function render(){
   document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on", b.dataset.tab===state.tab));
   document.getElementById("view").innerHTML =
     state.tab==="log"   ? viewLog(t)
+  : state.tab==="mine"  ? viewDiary()
   : state.tab==="trip"  ? viewTrip(t)
   : state.tab==="route" ? viewRoute()
   : viewSettle(t);
