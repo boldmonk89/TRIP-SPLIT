@@ -462,8 +462,13 @@ const CATS = { car:"Car", fuel:"Fuel", toll:"Toll", stay:"Stay", food:"Food", ac
 // name, so nobody else's token can reach them - the owner link included.
 // Nothing here touches the shared ledger or anyone's balance.
 async function mineLoad(){
-  if(!KEY) return;
-  try{ state.mine = await rpc("private_list", {p_token:KEY}) || []; }
+  if(!KEY){ state.mine = []; return; }
+  const forKey = KEY;
+  try{
+    const rows = await rpc("private_list", {p_token:KEY}) || [];
+    if(forKey !== KEY) return;       // token changed mid-flight - throw the answer away
+    state.mine = rows;
+  }
   catch(e){ /* offline - keep whatever is already on screen */ }
 }
 async function mineApply(op, data){
@@ -687,6 +692,7 @@ async function refresh(){
   const d = await rpc("get_ledger", {p_token:KEY});
   if(d.role === "none"){
     ls(KK, ""); KEY = null;
+    state.mine = [];                 // never leave one person's diary on screen for the next
     state.gate = "badkey";
     state.gateMsg = "That link no longer works. Ask Tejas for a fresh one.";
     return;
@@ -1256,6 +1262,7 @@ async function doJoin(){
     const res = await rpc("claim_invite", {p_token:state.joinToken, p_name:name});
     if(res.error){ state.gateMsg = res.error; render(); return; }
     KEY = res.memberToken;
+    state.mine = [];                 // a different person just took over this browser
     ls(KK, KEY); ls(JK, state.joinToken);
     await refresh();
   }catch(e){
